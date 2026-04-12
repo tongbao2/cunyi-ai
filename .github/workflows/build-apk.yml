@@ -39,12 +39,20 @@ jobs:
           yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses
           $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "platforms;android-34" "build-tools;34.0.0" "platform-tools"
       
-      - name: Build Debug APK
-        working-directory: ./android/CunYiAI
+      - name: Setup Gradle
         run: |
-          gradle wrapper --gradle-version 8.5
-          chmod +x gradlew
-          ./gradlew assembleDebug --no-daemon --stacktrace
+          cd android/CunYiAI
+          # 确保 gradlew 可执行
+          if [ ! -x "./gradlew" ]; then
+            chmod +x ./gradlew
+          fi
+          # 验证 wrapper 文件
+          ls -la gradlew*
+          ls -la gradle/wrapper/
+      
+      - name: Build Debug APK
+        working-directory: android/CunYiAI
+        run: bash -c './gradlew assembleDebug --no-daemon --stacktrace'
       
       - name: Upload APK
         uses: actions/upload-artifact@v4
