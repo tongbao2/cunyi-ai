@@ -22,13 +22,14 @@ class MainActivity : AppCompatActivity() {
     private lateinit var sendButton: ImageButton
     private lateinit var statusText: TextView
     
-    private val modelUrl = "https://hf-mirror.com/unsloth/gemma-4-E2B-it-GGUF/resolve/main/gemma-4-E2B-it-Q4_K_M.gguf"
+    // 默认模型地址：Gemma 4 2B Q4_K_M 量化版
+    private val defaultModelUrl = "https://hf-mirror.com/unsloth/gemma-4-E2B-it-GGUF/resolve/main/gemma-4-E2B-it-Q4_K_M.gguf"
     private var modelFile: File? = null
     private var isModelLoaded = false
     
     private val httpClient = OkHttpClient.Builder()
         .connectTimeout(30, TimeUnit.SECONDS)
-        .readTimeout(300, TimeUnit.SECONDS)
+        .readTimeout(600, TimeUnit.SECONDS)
         .writeTimeout(30, TimeUnit.SECONDS)
         .build()
 
@@ -51,12 +52,6 @@ class MainActivity : AppCompatActivity() {
                 sendMessage(message)
             }
         }
-        
-        // 首次运行自动下载模型
-        if (!isModelInstalled()) {
-            statusText.text = getString(R.string.model_downloading)
-            downloadModel(modelUrl)
-        }
     }
 
     private fun checkAndDownloadModel() {
@@ -70,17 +65,11 @@ class MainActivity : AppCompatActivity() {
         
         if (!modelFile!!.exists()) {
             statusText.text = getString(R.string.model_downloading)
-            downloadModel(modelUrl)
+            downloadModel(defaultModelUrl)
         } else {
             isModelLoaded = true
             statusText.text = getString(R.string.ai_ready)
         }
-    }
-
-    private fun isModelInstalled(): Boolean {
-        val modelDir = File(filesDir, "models")
-        val modelFile = File(modelDir, "gemma-4-E2B-it-Q4_K_M.gguf")
-        return modelFile.exists()
     }
 
     private fun downloadModel(url: String) {
@@ -111,7 +100,7 @@ class MainActivity : AppCompatActivity() {
                                         } else 0
                                         
                                         withContext(Dispatchers.Main) {
-                                            statusText.text = "下载中: $progress%"
+                                            statusText.text = "下载中: $progress% (${downloadedBytes / 1024 / 1024}MB)"
                                         }
                                     }
                                 }
@@ -126,7 +115,7 @@ class MainActivity : AppCompatActivity() {
                     } else {
                         withContext(Dispatchers.Main) {
                             statusText.text = getString(R.string.download_failed)
-                            Toast.makeText(this@MainActivity, R.string.download_failed, Toast.LENGTH_SHORT).show()
+                            Toast.makeText(this@MainActivity, "下载失败: ${response.code}", Toast.LENGTH_SHORT).show()
                         }
                     }
                 }
@@ -140,13 +129,10 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun sendMessage(message: String) {
-        // 在这里添加实际的 AI 推理逻辑
-        // 由于是离线模式，需要集成 llama.cpp 或类似的本地推理引擎
-        
         chatInput.setText("")
         
-        // TODO: 实现本地模型推理
-        // 这需要集成 llama.cpp 的 Android 绑定库
+        // TODO: 集成 llama.cpp 进行本地推理
+        // 当前代码仅演示模型下载功能
         
         Toast.makeText(this, "消息已发送: $message", Toast.LENGTH_SHORT).show()
     }

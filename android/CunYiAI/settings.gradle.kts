@@ -19,4 +19,3 @@ dependencyResolutionManagement {
 }
 
 rootProject.name = "CunYiAI"
-include(":app")
