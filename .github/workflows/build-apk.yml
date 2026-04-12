@@ -43,7 +43,7 @@ jobs:
       - name: Setup Gradle Wrapper
         working-directory: ./android/CunYiAI
         run: |
-          gradle wrapper --gradle-version=8.4
+          gradle wrapper --gradle-version=8.5
           chmod +x gradlew
           ls -la gradlew*
       
