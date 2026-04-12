@@ -43,14 +43,16 @@ jobs:
       - name: Setup Gradle Wrapper
         working-directory: ./android/CunYiAI
         run: |
-          if [ ! -f "gradlew" ]; then
-            gradle wrapper --gradle-version=8.4
-          fi
+          gradle wrapper --gradle-version=8.4
           chmod +x gradlew
+          ls -la gradlew*
       
       - name: Build Debug APK
         working-directory: ./android/CunYiAI
-        run: ./gradlew assembleDebug --no-daemon
+        run: |
+          pwd
+          ls -la
+          ./gradlew assembleDebug --no-daemon --stacktrace 2>&1
       
       - name: Upload APK
         uses: actions/upload-artifact@v4
@@ -63,7 +65,7 @@ jobs:
         uses: softprops/action-gh-release@v1
         with:
           tag_name: v1.0.0
-          release_name: 村医AI v1.0.0
+          name: 村医AI v1.0.0
           draft: false
           prerelease: false
           files: android/CunYiAI/app/build/outputs/apk/debug/app-debug.apk
