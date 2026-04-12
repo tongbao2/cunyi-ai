@@ -39,21 +39,29 @@ jobs:
           yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses
           $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "platforms;android-34" "build-tools;34.0.0" "platform-tools"
       
-      - name: Setup Gradle
+      - name: Setup Gradle Wrapper
+        working-directory: ./android/CunYiAI
         run: |
-          cd android/CunYiAI
-          # 确保 gradlew 可执行
-          if [ ! -x "./gradlew" ]; then
-            chmod +x ./gradlew
+          # 下载 gradle wrapper jar（如果没有的话）
+          if [ ! -f "gradle/wrapper/gradle-wrapper.jar" ]; then
+            mkdir -p gradle/wrapper
+            wget -q "https://raw.githubusercontent.com/gradle/gradle/v8.5.0/gradle/wrapper/gradle-wrapper.jar" -O gradle/wrapper/gradle-wrapper.jar
           fi
-          # 验证 wrapper 文件
-          ls -la gradlew*
-          ls -la gradle/wrapper/
-      
+          chmod +x gradlew
+          ls -la gradlew gradle/wrapper/
+          # 验证 gradlew 可执行
+          head -1 gradlew
+
       - name: Build Debug APK
-        working-directory: android/CunYiAI
-        run: bash -c './gradlew assembleDebug --no-daemon --stacktrace'
-      
+        working-directory: ./android/CunYiAI
+        run: |
+          ./gradlew assembleDebug --no-daemon --stacktrace 2>&1 | tee build.log
+          # 如果失败，打印日志
+          if [ $? -ne 0 ]; then
+            echo "=== BUILD FAILED ==="
+            cat build.log
+          fi
+
       - name: Upload APK
         uses: actions/upload-artifact@v4
         if: success()
