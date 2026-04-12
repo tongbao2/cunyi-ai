@@ -27,8 +27,8 @@ jobs:
           mkdir -p ${{ runner.temp }}/android-sdk
           export ANDROID_HOME=${{ runner.temp }}/android-sdk
           export ANDROID_SDK_ROOT=$ANDROID_HOME
-          echo "ANDROID_HOME=$ANDROID_HOME" >> $GITHUB_ENV
-          echo "ANDROID_SDK_ROOT=$ANDROID_SDK_ROOT" >> $GITHUB_ENV
+          echo "ANDROID_HOME=$ANDROID_HOME" >> "$GITHUB_ENV"
+          echo "ANDROID_SDK_ROOT=$ANDROID_SDK_ROOT" >> "$GITHUB_ENV"
           if [ ! -f "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" ]; then
             cd /tmp
             wget -q https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip -O cmdline-tools.zip
@@ -52,26 +52,34 @@ jobs:
 
       - name: Build Debug APK
         working-directory: ./android/CunYiAI
-        run: |
-          ./gradlew assembleDebug --no-daemon --stacktrace 2>&1 | tee build.log
-          if [ $? -ne 0 ]; then
-            echo "=== BUILD FAILED ==="
-            tail -100 build.log
-          fi
+        run: ./gradlew assembleDebug --no-daemon --stacktrace --info 2>&1 | tee build.log
 
-      - name: Find APK files
+      - name: Diagnose build output
+        if: always()
         run: |
-          echo "=== Searching for APK files ==="
-          find . -name "*.apk" -type f 2>/dev/null
-          echo "=== Build output directory ==="
-          ls -laR android/CunYiAI/build/outputs/ 2>/dev/null || echo "No outputs dir found"
-          ls -laR android/CunYiAI/build/ 2>/dev/null | head -50
+          echo "=== APK files in workspace ==="
+          find . -name "*.apk" -type f 2>/dev/null || echo "NONE"
+          echo "=== build/ dir contents ==="
+          find ./android/CunYiAI/build -type f 2>/dev/null | head -100 || echo "NO BUILD DIR"
+          echo "=== source structure ==="
+          ls -laR android/CunYiAI/src/main/ 2>/dev/null | head -50 || echo "NO src/main"
+          echo "=== gradle-wrapper.properties ==="
+          cat android/CunYiAI/gradle/wrapper/gradle-wrapper.properties 2>/dev/null
+
+      - name: Upload build log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-log
+          path: android/CunYiAI/build.log
+          retention-days: 7
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
-        if: success()
         with:
           name: cunyi-ai-debug-apk
-          path: android/CunYiAI/build/outputs/apk/**/*.apk
+          path: |
+            android/CunYiAI/build/outputs/apk/**/*.apk
+            android/CunYiAI/build/**/*.apk
           if-no-files-found: warn
           retention-days: 30
