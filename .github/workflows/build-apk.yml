@@ -53,16 +53,24 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: cunyi-ai-debug.apk
-          path: android/CunYiAI/app/build/outputs/apk/debug/app-debug.apk
+          path: android/CunYiAI/build/outputs/apk/debug
+          retention-days: 5
       
       - name: Create Release
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-        uses: softprops/action-gh-release@v1
-        with:
-          tag_name: v1.0.0
-          name: 村医AI v1.0.0
-          draft: false
-          prerelease: false
-          files: android/CunYiAI/app/build/outputs/apk/debug/app-debug.apk
+        run: |
+          APK_PATH="android/CunYiAI/build/outputs/apk/debug/app-debug.apk"
+          gh run download latest --dir . --pattern "**/app-debug.apk"
+          FULL_APK=$(find . -name "app-debug.apk" -type f 2>/dev/null | head -1)
+          if [ -f "$FULL_APK" ]; then
+            echo "Found APK at: $FULL_APK"
+            git tag -a v1.0.0 -m "Release v1.0.0"
+            git push origin v1.0.0
+            sleep 2
+            gh release create v1.0.0 --title "CunYiAI v1.0.0" --notes "CunYiAI offline medical assistant APK" "$FULL_APK"
+          else
+            echo "APK not found"
+            ls -la android/CunYiAI/build/outputs/apk/debug/
+          fi
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
