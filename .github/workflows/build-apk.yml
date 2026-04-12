@@ -11,17 +11,17 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-      
+
       - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
           java-version: '17'
           distribution: 'temurin'
-      
+
       - name: Install Android SDK
         run: |
           mkdir -p ${{ runner.temp }}/android-sdk
@@ -38,34 +38,40 @@ jobs:
           fi
           yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses
           $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "platforms;android-34" "build-tools;34.0.0" "platform-tools"
-      
+
       - name: Setup Gradle Wrapper
         working-directory: ./android/CunYiAI
         run: |
-          # 下载 gradle wrapper jar（如果没有的话）
           if [ ! -f "gradle/wrapper/gradle-wrapper.jar" ]; then
             mkdir -p gradle/wrapper
             wget -q "https://raw.githubusercontent.com/gradle/gradle/v8.5.0/gradle/wrapper/gradle-wrapper.jar" -O gradle/wrapper/gradle-wrapper.jar
           fi
           chmod +x gradlew
           ls -la gradlew gradle/wrapper/
-          # 验证 gradlew 可执行
           head -1 gradlew
 
       - name: Build Debug APK
         working-directory: ./android/CunYiAI
         run: |
           ./gradlew assembleDebug --no-daemon --stacktrace 2>&1 | tee build.log
-          # 如果失败，打印日志
           if [ $? -ne 0 ]; then
             echo "=== BUILD FAILED ==="
-            cat build.log
+            tail -100 build.log
           fi
+
+      - name: Find APK files
+        run: |
+          echo "=== Searching for APK files ==="
+          find . -name "*.apk" -type f 2>/dev/null
+          echo "=== Build output directory ==="
+          ls -laR android/CunYiAI/build/outputs/ 2>/dev/null || echo "No outputs dir found"
+          ls -laR android/CunYiAI/build/ 2>/dev/null | head -50
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         if: success()
         with:
           name: cunyi-ai-debug-apk
-          path: android/CunYiAI/build/outputs/apk/debug/*.apk
+          path: android/CunYiAI/build/outputs/apk/**/*.apk
+          if-no-files-found: warn
           retention-days: 30
