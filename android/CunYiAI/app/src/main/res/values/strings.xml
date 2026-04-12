@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">村医AI</string>
+    <string name="chat_hint">输入您的问题...</string>
+    <string name="send">发送</string>
+    <string name="settings">设置</string>
+    <string name="download_model">下载模型</string>
+    <string name="model_downloading">正在下载模型...</string>
+    <string name="model_downloaded">模型下载完成</string>
+    <string name="download_failed">下载失败</string>
+    <string name="initializing">正在初始化AI...</string>
+    <string name="ai_ready">AI已就绪</string>
+    <string name="error_loading_model">加载模型失败</string>
+    <string name="offline_mode">离线模式</string>
+    <string name="clear_chat">清空对话</string>
+    <string name="about">关于</string>
+    <string name="version">版本</string>
+    <string name="model_url">模型地址</string>
+    <string name="default_model_url">https://hf-mirror.com/unsloth/gemma-4-E2B-it-GGUF/resolve/main/gemma-4-E2B-it-Q4_K_M.gguf</string>
+    <string name="download">下载</string>
+    <string name="select_model">选择模型</string>
+    <string name="gemma_4_2b">Gemma 4 2B (轻量)</string>
+    <string name="gemma_4_3b">Gemma 4 3B (标准)</string>
+    <string name="llama_3_2_1b">Llama 3.2 1B</string>
+    <string name="llama_3_2_3b">Llama 3.2 3B</string>
+</resources>

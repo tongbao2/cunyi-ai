@@ -1,0 +1,55 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+venv/
+ENV/
+env/
+
+# Android
+*.apk
+*.aab
+*.dex
+*.class
+*.jar
+*.log
+.gradle/
+local.properties
+/.idea
+*.iml
+/captures
+.externalNativeBuild
+.cxx
+
+# Model files
+*.gguf
+*.pt
+*.pth
+*.bin
+models/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Environment
+.env
+.env.local
+*.env
