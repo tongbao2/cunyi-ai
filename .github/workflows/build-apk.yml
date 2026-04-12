@@ -25,6 +25,11 @@ jobs:
       - name: Set up Android SDK
         uses: android-actions/setup-android@v2
       
+      - name: Install SDK components
+        run: |
+          yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses
+          $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "platforms;android-34" "build-tools;34.0.0"
+      
       - name: Cache Gradle packages
         uses: actions/cache@v3
         with:
@@ -35,11 +40,17 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-gradle-
       
-      - name: Build Debug APK
+      - name: Setup Gradle Wrapper
         working-directory: ./android/CunYiAI
         run: |
+          if [ ! -f "gradlew" ]; then
+            gradle wrapper --gradle-version=8.4
+          fi
           chmod +x gradlew
-          ./gradlew assembleDebug --no-daemon
+      
+      - name: Build Debug APK
+        working-directory: ./android/CunYiAI
+        run: ./gradlew assembleDebug --no-daemon
       
       - name: Upload APK
         uses: actions/upload-artifact@v4
