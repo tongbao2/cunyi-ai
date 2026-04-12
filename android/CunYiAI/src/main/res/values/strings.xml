@@ -23,4 +23,29 @@
     <string name="gemma_4_3b">Gemma 4 3B (标准)</string>
     <string name="llama_3_2_1b">Llama 3.2 1B</string>
     <string name="llama_3_2_3b">Llama 3.2 3B</string>
+    
+    <!-- 新功能字符串 -->
+    <string name="sos_button">一键求救</string>
+    <string name="voice_consultation">语音问诊</string>
+    <string name="medicine_recognition">拍照识药</string>
+    <string name="health_management">慢病管理</string>
+    <string name="emergency_contact">紧急联系人</string>
+    <string name="add_contact">添加联系人</string>
+    <string name="blood_pressure">血压</string>
+    <string name="blood_sugar">血糖</string>
+    <string name="heart_rate">心率</string>
+    <string name="record">记录</string>
+    <string name="history">历史</string>
+    <string name="trend">趋势</string>
+    <string name="confirm">确认</string>
+    <string name="cancel">取消</string>
+    <string name="save">保存</string>
+    <string name="delete">删除</string>
+    <string name="name">姓名</string>
+    <string name="phone">电话</string>
+    <string name="relationship">关系</string>
+    
+    <!-- 免责声明 -->
+    <string name="disclaimer_title">⚠️ 免责声明</string>
+    <string name="disclaimer_content">AI 建议仅供参考，不能替代医生诊断。如有不适，请及时就医。</string>
 </resources>

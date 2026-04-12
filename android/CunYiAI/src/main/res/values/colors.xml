@@ -1,9 +1,27 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="ic_launcher_background">#4CAF50</color>
-    <color name="primary">#4CAF50</color>
-    <color name="primary_dark">#388E3C</color>
-    <color name="accent">#FF5722</color>
+    <!-- 老年人友好主题 - 深绿色系 -->
+    <color name="primary">#1B5E20</color>
+    <color name="primary_dark">#0D3D14</color>
+    <color name="primary_light">#4CAF50</color>
+    <color name="accent">#FF6D00</color>
+    
+    <!-- 背景色 -->
+    <color name="background">#F5F5F5</color>
+    <color name="surface">#FFFFFF</color>
+    
+    <!-- 文字颜色 -->
+    <color name="text_primary">#212121</color>
+    <color name="text_secondary">#424242</color>
+    <color name="text_on_primary">#FFFFFF</color>
+    
+    <!-- 警报颜色 -->
+    <color name="alert_red">#D32F2F</color>
+    <color name="alert_orange">#FF5722</color>
+    <color name="alert_yellow">#FFC107</color>
+    <color name="alert_green">#388E3C</color>
+    
+    <!-- 输入框 -->
+    <color name="input_background">#E8F5E9</color>
     <color name="white">#FFFFFF</color>
-    <color name="black">#000000</color>
 </resources>
