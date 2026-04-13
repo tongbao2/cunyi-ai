@@ -4,6 +4,9 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.PressInteraction
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -14,12 +17,15 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.size
 import com.cunyi.ai.manager.AiEngine
 import com.cunyi.ai.manager.HealthRecordManager
 import com.cunyi.ai.manager.ModelManager
 import com.cunyi.ai.manager.SOSManager
+import com.cunyi.ai.manager.VoiceInputManager
 import com.cunyi.ai.ui.components.*
 import com.cunyi.ai.ui.screens.*
 import com.cunyi.ai.ui.theme.*
@@ -30,6 +36,7 @@ class MainActivity : ComponentActivity() {
     private lateinit var healthRecordManager: HealthRecordManager
     private lateinit var sosManager: SOSManager
     private lateinit var modelManager: ModelManager
+    private lateinit var voiceInputManager: VoiceInputManager
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -38,16 +45,24 @@ class MainActivity : ComponentActivity() {
         healthRecordManager = HealthRecordManager(this)
         sosManager = SOSManager(this)
         modelManager = ModelManager(this)
+        voiceInputManager = VoiceInputManager(this)
+        voiceInputManager.initialize()
 
         setContent {
             CunYiAITheme {
                 CunYiAIMainScreen(
                     healthRecordManager = healthRecordManager,
                     sosManager = sosManager,
-                    modelManager = modelManager
+                    modelManager = modelManager,
+                    voiceInputManager = voiceInputManager
                 )
             }
         }
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        voiceInputManager.destroy()
     }
 }
 
@@ -56,7 +71,8 @@ class MainActivity : ComponentActivity() {
 fun CunYiAIMainScreen(
     healthRecordManager: HealthRecordManager,
     sosManager: SOSManager,
-    modelManager: ModelManager
+    modelManager: ModelManager,
+    voiceInputManager: VoiceInputManager
 ) {
     var currentScreen by remember { mutableStateOf<Screen>(Screen.Home) }
     var modelStatus by remember { mutableStateOf(AiEngine.getModelStatus()) }
@@ -145,13 +161,16 @@ fun CunYiAIMainScreen(
                     onBack = { currentScreen = Screen.Home },
                     onSOS = { currentScreen = Screen.SOS },
                     messages = chatMessages,
+                    voiceState = voiceInputManager.voiceState,
                     onSendMessage = { message ->
                         // 添加用户消息
                         chatMessages = chatMessages + ChatMessage(message, isUser = true)
                         // 调用 AI 引擎生成回复
                         val aiResponse = AiEngine.generateResponse(message)
                         chatMessages = chatMessages + ChatMessage(aiResponse, isUser = false)
-                    }
+                    },
+                    onVoiceStart = { cb -> voiceInputManager.startListening(cb) },
+                    onVoiceStop = { voiceInputManager.stopListening() }
                 )
                 Screen.Health -> HealthManagementScreen(
                     healthRecordManager = healthRecordManager,
@@ -256,7 +275,7 @@ private fun HomeScreen(
         item {
             FunctionCard(
                 title = "下载AI模型",
-                description = "下载离线AI模型（约2.4GB）",
+                description = "下载离线AI模型（约3.1GB）",
                 icon = "🤖",
                 onClick = onNavigateToModelDownload
             )
@@ -303,9 +322,34 @@ private fun ChatScreen(
     onBack: () -> Unit,
     onSOS: () -> Unit,
     messages: List<ChatMessage>,
-    onSendMessage: (String) -> Unit
+    voiceState: StateFlow<VoiceInputManager.VoiceState>,
+    onSendMessage: (String) -> Unit,
+    onVoiceStart: ((String) -> Unit) -> Unit,
+    onVoiceStop: () -> Unit
 ) {
     var inputText by remember { mutableStateOf("") }
+    val currentVoiceState by voiceState.collectAsState()
+    var isRecording by remember { mutableStateOf(false) }
+
+    // 监听语音识别结果
+    LaunchedEffect(currentVoiceState) {
+        when (currentVoiceState) {
+            is VoiceInputManager.VoiceState.Result -> {
+                val text = (currentVoiceState as VoiceInputManager.VoiceState.Result).text
+                if (text.isNotBlank()) {
+                    inputText = text
+                }
+                isRecording = false
+            }
+            is VoiceInputManager.VoiceState.Listening -> {
+                isRecording = true
+            }
+            is VoiceInputManager.VoiceState.Error -> {
+                isRecording = false
+            }
+            else -> { /* Idle, Ready */ }
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -397,14 +441,85 @@ private fun ChatScreen(
                         .padding(Dimensions.SpacingM.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
+                    // 语音输入按钮 - 按住说话
+                    val pointerModifier = Modifier
+                    IconButton(
+                        onClick = {},
+                        modifier = Modifier
+                            .size(48.dp)
+                            .then(pointerModifier),
+                        colors = IconButtonDefaults.iconButtonColors(
+                            containerColor = if (isRecording) AlertRed.copy(alpha = 0.15f) else PrimaryGreen.copy(alpha = 0.1f)
+                        )
+                    ) {
+                        // 按住说话：监听 press/release
+                        val interactionSource = remember { MutableInteractionSource() }
+                        LaunchedEffect(interactionSource) {
+                            interactionSource.interactions.collect { interaction ->
+                                when (interaction) {
+                                    is PressInteraction.Press -> {
+                                        isRecording = true
+                                        onVoiceStart { voiceText ->
+                                            inputText = voiceText
+                                            isRecording = false
+                                        }
+                                    }
+                                    is PressInteraction.Release -> {
+                                        isRecording = false
+                                        onVoiceStop()
+                                    }
+                                }
+                            }
+                        }
+                        Icon(
+                            imageVector = if (isRecording) Icons.Default.Mic else Icons.Default.Mic,
+                            contentDescription = "按住说话",
+                            tint = if (isRecording) AlertRed else PrimaryGreen,
+                            modifier = Modifier
+                                .pointerInput(Unit) {
+                                    detectTapGestures(
+                                        onPress = {
+                                            isRecording = true
+                                            var capturedText = ""
+                                            onVoiceStart { text ->
+                                                capturedText = text
+                                            }
+                                            tryAwaitRelease()
+                                            isRecording = false
+                                            onVoiceStop()
+                                            if (capturedText.isNotBlank()) {
+                                                inputText = capturedText
+                                            }
+                                        }
+                                    )
+                                }
+                                .size(28.dp)
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.width(Dimensions.SpacingS.dp))
+
+                    // 文本输入框
                     OutlinedTextField(
                         value = inputText,
                         onValueChange = { inputText = it },
                         modifier = Modifier.weight(1f),
-                        placeholder = { Text("输入您的问题...", style = MaterialTheme.typography.bodyMedium) },
-                        maxLines = 3
+                        placeholder = {
+                            Text(
+                                text = if (isRecording) "正在聆听..." else "输入您的问题，或按住🎤说话",
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+                        },
+                        maxLines = 3,
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = PrimaryGreen,
+                            cursorColor = PrimaryGreen
+                        )
                     )
-                    Spacer(modifier = Modifier.width(Dimensions.SpacingM.dp))
+
+                    Spacer(modifier = Modifier.width(Dimensions.SpacingS.dp))
+
+                    // 发送按钮
                     Button(
                         onClick = {
                             if (inputText.isNotBlank()) {
@@ -413,9 +528,38 @@ private fun ChatScreen(
                             }
                         },
                         modifier = Modifier.height(56.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = PrimaryGreen)
+                        enabled = inputText.isNotBlank() && !isRecording,
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = PrimaryGreen,
+                            disabledContainerColor = PrimaryGreen.copy(alpha = 0.3f)
+                        )
                     ) {
                         Text("发送", style = MaterialTheme.typography.titleMedium)
+                    }
+                }
+
+                // 录音状态提示
+                if (isRecording) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = Dimensions.SpacingM.dp)
+                            .padding(bottom = Dimensions.SpacingS.dp),
+                        horizontalArrangement = Arrangement.Center,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            Icons.Default.Mic,
+                            contentDescription = null,
+                            tint = AlertRed,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            text = "正在聆听... 松开发送",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = AlertRed
+                        )
                     }
                 }
             }
@@ -507,7 +651,7 @@ private fun SettingsScreen(
                             style = MaterialTheme.typography.bodyLarge
                         )
                         Text(
-                            text = "大小：约 2.4 GB",
+                            text = "大小：约 3.1 GB",
                             style = MaterialTheme.typography.bodyMedium,
                             color = TextSecondary
                         )
