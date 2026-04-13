@@ -16,6 +16,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.cunyi.ai.manager.AiEngine
 import com.cunyi.ai.manager.HealthRecordManager
 import com.cunyi.ai.manager.ModelManager
 import com.cunyi.ai.manager.SOSManager
