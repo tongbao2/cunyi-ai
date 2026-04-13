@@ -1,12 +1,11 @@
 package com.cunyi.ai
 
+import android.Manifest
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.PressInteraction
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -17,10 +16,8 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.size
 import kotlinx.coroutines.flow.StateFlow
 import com.cunyi.ai.manager.AiEngine
 import com.cunyi.ai.manager.HealthRecordManager
@@ -30,7 +27,6 @@ import com.cunyi.ai.manager.VoiceInputManager
 import com.cunyi.ai.ui.components.*
 import com.cunyi.ai.ui.screens.*
 import com.cunyi.ai.ui.theme.*
-import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
 
@@ -442,59 +438,42 @@ private fun ChatScreen(
                         .padding(Dimensions.SpacingM.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    // 语音输入按钮 - 按住说话
-                    val pointerModifier = Modifier
+                    // 语音输入按钮
+                    val permissionLauncher = rememberLauncherForActivityResult(
+                        ActivityResultContracts.RequestPermission()
+                    ) { granted ->
+                        if (granted) {
+                            onVoiceStart { voiceText ->
+                                if (voiceText.isNotBlank()) {
+                                    inputText = voiceText
+                                }
+                                isRecording = false
+                            }
+                            isRecording = true
+                        } else {
+                            isRecording = false
+                        }
+                    }
+
                     IconButton(
-                        onClick = {},
-                        modifier = Modifier
-                            .size(48.dp)
-                            .then(pointerModifier),
+                        onClick = {
+                            if (isRecording) {
+                                onVoiceStop()
+                                isRecording = false
+                            } else {
+                                permissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+                            }
+                        },
+                        modifier = Modifier.size(48.dp),
                         colors = IconButtonDefaults.iconButtonColors(
                             containerColor = if (isRecording) AlertRed.copy(alpha = 0.15f) else PrimaryGreen.copy(alpha = 0.1f)
                         )
                     ) {
-                        // 按住说话：监听 press/release
-                        val interactionSource = remember { MutableInteractionSource() }
-                        LaunchedEffect(interactionSource) {
-                            interactionSource.interactions.collect { interaction ->
-                                when (interaction) {
-                                    is PressInteraction.Press -> {
-                                        isRecording = true
-                                        onVoiceStart { voiceText ->
-                                            inputText = voiceText
-                                            isRecording = false
-                                        }
-                                    }
-                                    is PressInteraction.Release -> {
-                                        isRecording = false
-                                        onVoiceStop()
-                                    }
-                                }
-                            }
-                        }
                         Icon(
-                            imageVector = if (isRecording) Icons.Default.Mic else Icons.Default.Mic,
-                            contentDescription = "按住说话",
+                            imageVector = if (isRecording) Icons.Default.Stop else Icons.Default.Mic,
+                            contentDescription = if (isRecording) "停止录音" else "语音输入",
                             tint = if (isRecording) AlertRed else PrimaryGreen,
-                            modifier = Modifier
-                                .pointerInput(Unit) {
-                                    detectTapGestures(
-                                        onPress = {
-                                            isRecording = true
-                                            var capturedText = ""
-                                            onVoiceStart { text ->
-                                                capturedText = text
-                                            }
-                                            tryAwaitRelease()
-                                            isRecording = false
-                                            onVoiceStop()
-                                            if (capturedText.isNotBlank()) {
-                                                inputText = capturedText
-                                            }
-                                        }
-                                    )
-                                }
-                                .size(28.dp)
+                            modifier = Modifier.size(28.dp)
                         )
                     }
 
