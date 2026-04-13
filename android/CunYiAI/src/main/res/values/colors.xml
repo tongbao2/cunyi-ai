@@ -24,4 +24,7 @@
     <!-- 输入框 -->
     <color name="input_background">#E8F5E9</color>
     <color name="white">#FFFFFF</color>
+    
+    <!-- Launcher icon background -->
+    <color name="ic_launcher_background">#1B5E20</color>
 </resources>
