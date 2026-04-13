@@ -57,12 +57,6 @@
             </intent-filter>
         </activity>
 
-        <!-- SOS快捷方式 -->
-        <intent-filter>
-            <action android:name="android.intent.action.DIAL" />
-            <data android:scheme="tel" />
-        </intent-filter>
-
         <!-- 文件提供者（分享模型文件） -->
         <provider
             android:name="androidx.core.content.FileProvider"
