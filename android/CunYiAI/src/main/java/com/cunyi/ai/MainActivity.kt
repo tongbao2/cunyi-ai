@@ -17,6 +17,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.cunyi.ai.manager.HealthRecordManager
+import com.cunyi.ai.manager.ModelManager
 import com.cunyi.ai.manager.SOSManager
 import com.cunyi.ai.ui.components.*
 import com.cunyi.ai.ui.screens.*
@@ -27,6 +28,7 @@ class MainActivity : ComponentActivity() {
 
     private lateinit var healthRecordManager: HealthRecordManager
     private lateinit var sosManager: SOSManager
+    private lateinit var modelManager: ModelManager
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -34,12 +36,14 @@ class MainActivity : ComponentActivity() {
 
         healthRecordManager = HealthRecordManager(this)
         sosManager = SOSManager(this)
+        modelManager = ModelManager(this)
 
         setContent {
             CunYiAITheme {
                 CunYiAIMainScreen(
                     healthRecordManager = healthRecordManager,
-                    sosManager = sosManager
+                    sosManager = sosManager,
+                    modelManager = modelManager
                 )
             }
         }
@@ -50,7 +54,8 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun CunYiAIMainScreen(
     healthRecordManager: HealthRecordManager,
-    sosManager: SOSManager
+    sosManager: SOSManager,
+    modelManager: ModelManager
 ) {
     var currentScreen by remember { mutableStateOf<Screen>(Screen.Home) }
     var modelStatus by remember { mutableStateOf("AI未就绪") }
@@ -134,7 +139,8 @@ fun CunYiAIMainScreen(
                     onNavigateToMedicine = { currentScreen = Screen.Medicine },
                     onNavigateToHealth = { currentScreen = Screen.Health },
                     onNavigateToChat = { currentScreen = Screen.Chat },
-                    onNavigateToSettings = { currentScreen = Screen.Settings }
+                    onNavigateToSettings = { currentScreen = Screen.Settings },
+                    onNavigateToModelDownload = { currentScreen = Screen.ModelDownload }
                 )
                 Screen.Chat -> ChatScreen(
                     onBack = { currentScreen = Screen.Home },
@@ -162,13 +168,17 @@ fun CunYiAIMainScreen(
                     sosManager = sosManager,
                     onBack = { currentScreen = Screen.Home }
                 )
+                Screen.ModelDownload -> ModelDownloadScreen(
+                    modelManager = modelManager,
+                    modifier = Modifier.fillMaxSize()
+                )
             }
         }
     }
 }
 
 enum class Screen {
-    Home, Chat, Health, SOS, Medicine, Settings
+    Home, Chat, Health, SOS, Medicine, Settings, ModelDownload
 }
 
 data class ChatMessage(
@@ -184,7 +194,8 @@ private fun HomeScreen(
     onNavigateToMedicine: () -> Unit,
     onNavigateToHealth: () -> Unit,
     onNavigateToChat: () -> Unit,
-    onNavigateToSettings: () -> Unit
+    onNavigateToSettings: () -> Unit,
+    onNavigateToModelDownload: () -> Unit
 ) {
     LazyColumn(
         modifier = Modifier
@@ -239,6 +250,15 @@ private fun HomeScreen(
                 description = "一键发送求救短信给家人",
                 icon = "🆘",
                 onClick = onNavigateToSOS
+            )
+        }
+
+        item {
+            FunctionCard(
+                title = "下载AI模型",
+                description = "下载离线AI模型（约2.4GB）",
+                icon = "🤖",
+                onClick = onNavigateToModelDownload
             )
         }
 
