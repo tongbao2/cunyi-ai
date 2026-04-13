@@ -37,35 +37,35 @@ val InputBorder = Color(0xFF81C784)
 // ========== 尺寸常量（老年人友好）============
 
 object Dimensions {
-    // 字体大小
-    const val FontSizeSmall = 16f
-    const val FontSizeBody = 18f
-    const val FontSizeTitle = 24f
-    const val FontSizeHeadline = 28f
-    const val FontSizeLarge = 32f
+    // 字体大小 (sp)
+    const val FontSizeSmall = 16
+    const val FontSizeBody = 18
+    const val FontSizeTitle = 24
+    const val FontSizeHeadline = 28
+    const val FontSizeLarge = 32
 
-    // 按钮尺寸
-    const val ButtonHeight = 72f
-    const val ButtonHeightLarge = 88f
-    const val ButtonMinWidth = 120f
+    // 按钮尺寸 (dp)
+    const val ButtonHeight = 72
+    const val ButtonHeightLarge = 88
+    const val ButtonMinWidth = 120
 
-    // 图标大小
-    const val IconSizeSmall = 32f
-    const val IconSizeMedium = 48f
-    const val IconSizeLarge = 64f
+    // 图标大小 (dp)
+    const val IconSizeSmall = 32
+    const val IconSizeMedium = 48
+    const val IconSizeLarge = 64
 
-    // 间距
-    const val SpacingXS = 4f
-    const val SpacingS = 8f
-    const val SpacingM = 16f
-    const val SpacingL = 24f
-    const val SpacingXL = 32f
+    // 间距 (dp)
+    const val SpacingXS = 4
+    const val SpacingS = 8
+    const val SpacingM = 16
+    const val SpacingL = 24
+    const val SpacingXL = 32
 
-    // 圆角
-    const val CornerRadius = 16f
-    const val CornerRadiusLarge = 24f
+    // 圆角 (dp)
+    const val CornerRadius = 16
+    const val CornerRadiusLarge = 24
 
-    // 卡片
-    const val CardElevation = 4f
-    const val CardPadding = 20f
+    // 卡片 (dp)
+    const val CardElevation = 4
+    const val CardPadding = 20
 }
