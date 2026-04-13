@@ -58,11 +58,9 @@ fun CunYiAIMainScreen(
     modelManager: ModelManager
 ) {
     var currentScreen by remember { mutableStateOf<Screen>(Screen.Home) }
-    var modelStatus by remember { mutableStateOf("AI未就绪") }
-    var isModelLoading by remember { mutableStateOf(false) }
+    var modelStatus by remember { mutableStateOf(AiEngine.getModelStatus()) }
     var chatMessages by remember { mutableStateOf(listOf<ChatMessage>()) }
     val listState = rememberLazyListState()
-    val scope = rememberCoroutineScope()
 
     Scaffold(
         topBar = {
@@ -88,7 +86,7 @@ fun CunYiAIMainScreen(
                         )
                         StatusIndicator(
                             text = modelStatus,
-                            color = if (modelStatus == "AI已就绪") AlertGreen else AccentOrange
+                            color = if (AiEngine.isModelReady()) AlertGreen else AccentOrange
                         )
                     }
                 }
@@ -145,12 +143,13 @@ fun CunYiAIMainScreen(
                 Screen.Chat -> ChatScreen(
                     onBack = { currentScreen = Screen.Home },
                     onSOS = { currentScreen = Screen.SOS },
-                    modelStatus = modelStatus,
-                    isModelLoading = isModelLoading,
                     messages = chatMessages,
                     onSendMessage = { message ->
+                        // 添加用户消息
                         chatMessages = chatMessages + ChatMessage(message, isUser = true)
-                        // TODO: 调用 AI 模型
+                        // 调用 AI 引擎生成回复
+                        val aiResponse = AiEngine.generateResponse(message)
+                        chatMessages = chatMessages + ChatMessage(aiResponse, isUser = false)
                     }
                 )
                 Screen.Health -> HealthManagementScreen(
@@ -302,8 +301,6 @@ private fun HomeScreen(
 private fun ChatScreen(
     onBack: () -> Unit,
     onSOS: () -> Unit,
-    modelStatus: String,
-    isModelLoading: Boolean,
     messages: List<ChatMessage>,
     onSendMessage: (String) -> Unit
 ) {
