@@ -21,6 +21,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.size
+import kotlinx.coroutines.flow.StateFlow
 import com.cunyi.ai.manager.AiEngine
 import com.cunyi.ai.manager.HealthRecordManager
 import com.cunyi.ai.manager.ModelManager
