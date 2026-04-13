@@ -1,8 +1,7 @@
 # 村医 AI - 离线医学助手
 
-基于 Google Gemma 4 E2B 模型开发的离线医学助手，专为偏远地区乡村医生和农村老年人设计。
+基于 Google Gemma 4 E2B 模型开发的离线医学助手，专为偏远地区农村老年人设计。
 
-![Cover image](assets/cover-image.png)
 
 ## 🏥 功能特点
 
