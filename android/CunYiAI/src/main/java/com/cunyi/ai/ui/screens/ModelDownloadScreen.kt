@@ -69,7 +69,7 @@ fun ModelDownloadScreen(
                     color = TextSecondary
                 )
                 Text(
-                    text = "模型大小: 约 2.4 GB",
+                    text = "模型大小: 约 3.1 GB",
                     style = MaterialTheme.typography.bodyMedium,
                     color = TextSecondary
                 )
@@ -251,7 +251,7 @@ fun ModelDownloadScreen(
                 Spacer(modifier = Modifier.height(Dimensions.SpacingS.dp))
                 val instructions = listOf(
                     "1. 点击下载按钮开始下载AI模型",
-                    "2. 模型约2.4GB，建议在WiFi环境下下载",
+                    "2. 模型约3.1GB，建议在WiFi环境下下载",
                     "3. 下载完成后可离线使用AI问诊功能",
                     "4. 模型存储在应用目录中，卸载应用会自动删除"
                 )
