@@ -16,7 +16,9 @@ import androidx.compose.ui.unit.dp
 import com.cunyi.ai.ui.theme.*
 
 /**
- * 澶ф寜閽粍浠?- 鑰佸勾浜哄弸濂借璁? * 鏈€灏忛珮搴?72dp锛岄珮瀵规瘮搴? */
+ * 大按钮组件 - 老年人友好设计
+ * 最小高度 72dp，高对比度
+ */
 @Composable
 fun LargeButton(
     text: String,
@@ -58,7 +60,7 @@ fun LargeButton(
 }
 
 /**
- * 瓒呭ぇSOS鎸夐挳 - 绾㈣壊閱掔洰
+ * 超大SOS按钮 - 红色醒目
  */
 @Composable
 fun SOSButton(
@@ -79,7 +81,7 @@ fun SOSButton(
         )
     ) {
         Text(
-            text = "馃啒 涓€閿眰鏁?,
+            text = "🆘 一键求救",
             style = MaterialTheme.typography.headlineMedium,
             textAlign = TextAlign.Center
         )
@@ -87,7 +89,7 @@ fun SOSButton(
 }
 
 /**
- * 鍔熻兘鍗＄墖 - 鐢ㄤ簬棣栭〉鍔熻兘鍏ュ彛
+ * 功能卡片 - 用于首页功能入口
  */
 @Composable
 fun FunctionCard(
@@ -112,7 +114,7 @@ fun FunctionCard(
                 .padding(Dimensions.CardPadding.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // 鍥炬爣
+            // 图标
             Box(
                 modifier = Modifier
                     .size(72.dp)
@@ -128,7 +130,7 @@ fun FunctionCard(
 
             Spacer(modifier = Modifier.width(Dimensions.SpacingL.dp))
 
-            // 鏂囧瓧
+            // 文字
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = title,
@@ -147,7 +149,7 @@ fun FunctionCard(
 }
 
 /**
- * 鐘舵€佹寚绀哄櫒
+ * 状态指示器
  */
 @Composable
 fun StatusIndicator(
