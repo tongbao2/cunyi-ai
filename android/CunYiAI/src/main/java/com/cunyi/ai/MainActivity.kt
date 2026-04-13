@@ -335,7 +335,7 @@ private fun ChatScreen(
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(vertical = Dimensions.SpacingXL),
+                                .padding(vertical = Dimensions.SpacingXL.dp),
                             contentAlignment = Alignment.Center
                         ) {
                             Column(horizontalAlignment = Alignment.CenterHorizontally) {
