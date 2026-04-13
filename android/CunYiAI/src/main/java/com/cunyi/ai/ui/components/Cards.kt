@@ -16,7 +16,7 @@ import com.cunyi.ai.data.AlertLevel
 import com.cunyi.ai.ui.theme.*
 
 /**
- * 鍋ュ悍璀︽姤鍗＄墖
+ * 健康警报卡片
  */
 @Composable
 fun AlertCard(
@@ -41,7 +41,8 @@ fun AlertCard(
         Column(
             modifier = Modifier.padding(Dimensions.CardPadding.dp)
         ) {
-            // 鏍囬琛?            Row(
+            // 标题行
+            Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
@@ -49,10 +50,10 @@ fun AlertCard(
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
                         text = when (level) {
-                            AlertLevel.RED -> "馃敶 鍗遍櫓"
-                            AlertLevel.ORANGE -> "馃煚 璀﹀憡"
-                            AlertLevel.YELLOW -> "馃煛 娉ㄦ剰"
-                            AlertLevel.GREEN -> "馃煝 姝ｅ父"
+                            AlertLevel.RED -> "🔴 危险"
+                            AlertLevel.ORANGE -> "🟠 警告"
+                            AlertLevel.YELLOW -> "🟡 注意"
+                            AlertLevel.GREEN -> "🟢 正常"
                         },
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold,
@@ -63,7 +64,7 @@ fun AlertCard(
 
             Spacer(modifier = Modifier.height(Dimensions.SpacingM.dp))
 
-            // 娑堟伅
+            // 消息
             Text(
                 text = message,
                 style = MaterialTheme.typography.bodyLarge,
@@ -74,7 +75,7 @@ fun AlertCard(
 }
 
 /**
- * 鏁板€兼樉绀哄崱鐗囷紙濡傝鍘嬨€佽绯栧€硷級
+ * 数值显示卡片（如血压、血糖值）
  */
 @Composable
 fun ValueCard(
@@ -128,7 +129,7 @@ fun ValueCard(
 }
 
 /**
- * 瀵硅瘽姘旀场
+ * 对话气泡
  */
 @Composable
 fun ChatBubble(
@@ -163,7 +164,8 @@ fun ChatBubble(
 }
 
 /**
- * 搴曢儴瀵艰埅椤? */
+ * 底部导航项
+ */
 @Composable
 fun BottomNavItem(
     icon: String,
