@@ -20,7 +20,7 @@ class ModelManager(private val context: Context) {
         // HuggingFace镜像地址 - Gemma 4 E2B Q4_K_M
         const val MODEL_URL = "https://hf-mirror.com/unsloth/gemma-4-E2B-it-GGUF/resolve/main/gemma-4-E2B-it-Q4_K_M.gguf"
         const val MODEL_FILENAME = "gemma-4-E2B-it-Q4_K_M.gguf"
-        const val MODEL_SIZE = 2.4 * 1024 * 1024 * 1024L // 约2.4GB
+        const val MODEL_SIZE = 3.1 * 1024 * 1024 * 1024L // 约3.1GB
     }
 
     // 下载状态
