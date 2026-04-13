@@ -16,7 +16,7 @@ import com.cunyi.ai.data.AlertLevel
 import com.cunyi.ai.ui.theme.*
 
 /**
- * 健康警报卡片
+ * 鍋ュ悍璀︽姤鍗＄墖
  */
 @Composable
 fun AlertCard(
@@ -35,14 +35,13 @@ fun AlertCard(
 
     Card(
         modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(Dimensions.CornerRadius),
+        shape = RoundedCornerShape(Dimensions.CornerRadius.dp),
         colors = CardDefaults.cardColors(containerColor = backgroundColor.copy(alpha = 0.15f))
     ) {
         Column(
             modifier = Modifier.padding(Dimensions.CardPadding.dp)
         ) {
-            // 标题行
-            Row(
+            // 鏍囬琛?            Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
@@ -50,10 +49,10 @@ fun AlertCard(
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
                         text = when (level) {
-                            AlertLevel.RED -> "🔴 危险"
-                            AlertLevel.ORANGE -> "🟠 警告"
-                            AlertLevel.YELLOW -> "🟡 注意"
-                            AlertLevel.GREEN -> "🟢 正常"
+                            AlertLevel.RED -> "馃敶 鍗遍櫓"
+                            AlertLevel.ORANGE -> "馃煚 璀﹀憡"
+                            AlertLevel.YELLOW -> "馃煛 娉ㄦ剰"
+                            AlertLevel.GREEN -> "馃煝 姝ｅ父"
                         },
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold,
@@ -64,7 +63,7 @@ fun AlertCard(
 
             Spacer(modifier = Modifier.height(Dimensions.SpacingM.dp))
 
-            // 消息
+            // 娑堟伅
             Text(
                 text = message,
                 style = MaterialTheme.typography.bodyLarge,
@@ -75,7 +74,7 @@ fun AlertCard(
 }
 
 /**
- * 数值显示卡片（如血压、血糖值）
+ * 鏁板€兼樉绀哄崱鐗囷紙濡傝鍘嬨€佽绯栧€硷級
  */
 @Composable
 fun ValueCard(
@@ -94,7 +93,7 @@ fun ValueCard(
 
     Card(
         modifier = modifier,
-        shape = RoundedCornerShape(Dimensions.CornerRadius),
+        shape = RoundedCornerShape(Dimensions.CornerRadius.dp),
         colors = CardDefaults.cardColors(containerColor = BackgroundWhite),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
@@ -129,7 +128,7 @@ fun ValueCard(
 }
 
 /**
- * 对话气泡
+ * 瀵硅瘽姘旀场
  */
 @Composable
 fun ChatBubble(
@@ -164,8 +163,7 @@ fun ChatBubble(
 }
 
 /**
- * 底部导航项
- */
+ * 搴曢儴瀵艰埅椤? */
 @Composable
 fun BottomNavItem(
     icon: String,
