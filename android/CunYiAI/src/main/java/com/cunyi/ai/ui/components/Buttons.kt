@@ -16,9 +16,7 @@ import androidx.compose.ui.unit.dp
 import com.cunyi.ai.ui.theme.*
 
 /**
- * 大按钮组件 - 老年人友好设计
- * 最小高度 72dp，高对比度
- */
+ * 澶ф寜閽粍浠?- 鑰佸勾浜哄弸濂借璁? * 鏈€灏忛珮搴?72dp锛岄珮瀵规瘮搴? */
 @Composable
 fun LargeButton(
     text: String,
@@ -35,7 +33,7 @@ fun LargeButton(
             .fillMaxWidth()
             .height(Dimensions.ButtonHeight.dp),
         enabled = enabled,
-        shape = RoundedCornerShape(Dimensions.CornerRadius),
+        shape = RoundedCornerShape(Dimensions.CornerRadius.dp),
         colors = ButtonDefaults.buttonColors(
             containerColor = containerColor,
             contentColor = contentColor,
@@ -60,7 +58,7 @@ fun LargeButton(
 }
 
 /**
- * 超大SOS按钮 - 红色醒目
+ * 瓒呭ぇSOS鎸夐挳 - 绾㈣壊閱掔洰
  */
 @Composable
 fun SOSButton(
@@ -74,14 +72,14 @@ fun SOSButton(
             .fillMaxWidth()
             .height(Dimensions.ButtonHeightLarge.dp),
         enabled = enabled,
-        shape = RoundedCornerShape(Dimensions.CornerRadiusLarge),
+        shape = RoundedCornerShape(Dimensions.CornerRadiusLarge.dp),
         colors = ButtonDefaults.buttonColors(
             containerColor = AlertRed,
             contentColor = Color.White
         )
     ) {
         Text(
-            text = "🆘 一键求救",
+            text = "馃啒 涓€閿眰鏁?,
             style = MaterialTheme.typography.headlineMedium,
             textAlign = TextAlign.Center
         )
@@ -89,7 +87,7 @@ fun SOSButton(
 }
 
 /**
- * 功能卡片 - 用于首页功能入口
+ * 鍔熻兘鍗＄墖 - 鐢ㄤ簬棣栭〉鍔熻兘鍏ュ彛
  */
 @Composable
 fun FunctionCard(
@@ -104,7 +102,7 @@ fun FunctionCard(
         modifier = modifier
             .fillMaxWidth()
             .clickable(onClick = onClick),
-        shape = RoundedCornerShape(Dimensions.CornerRadius),
+        shape = RoundedCornerShape(Dimensions.CornerRadius.dp),
         colors = CardDefaults.cardColors(containerColor = containerColor),
         elevation = CardDefaults.cardElevation(defaultElevation = Dimensions.CardElevation.dp)
     ) {
@@ -114,7 +112,7 @@ fun FunctionCard(
                 .padding(Dimensions.CardPadding.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // 图标
+            // 鍥炬爣
             Box(
                 modifier = Modifier
                     .size(72.dp)
@@ -130,7 +128,7 @@ fun FunctionCard(
 
             Spacer(modifier = Modifier.width(Dimensions.SpacingL.dp))
 
-            // 文字
+            // 鏂囧瓧
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = title,
@@ -149,7 +147,7 @@ fun FunctionCard(
 }
 
 /**
- * 状态指示器
+ * 鐘舵€佹寚绀哄櫒
  */
 @Composable
 fun StatusIndicator(
