@@ -57,14 +57,14 @@ jobs:
       - name: Diagnose build output
         if: always()
         run: |
-          echo "=== APK files in workspace ==="
-          find . -name "*.apk" -type f 2>/dev/null || echo "NONE"
-          echo "=== build/ dir contents ==="
-          find ./android/CunYiAI/build -type f 2>/dev/null | head -100 || echo "NO BUILD DIR"
-          echo "=== source structure ==="
-          ls -la android/CunYiAI/src/main/ 2>/dev/null | head -50 || echo "NO src/main"
-          echo "=== gradle-wrapper.properties ==="
-          cat android/CunYiAI/gradle/wrapper/gradle-wrapper.properties 2>/dev/null
+          echo "=== gradle build result ==="
+          tail -30 build.log
+          echo ""
+          echo "=== APK files in android/CunYiAI/build ==="
+          find android/CunYiAI/build -name "*.apk" -type f 2>/dev/null || echo "NONE"
+          echo ""
+          echo "=== build/outputs/apk dir ==="
+          ls -laR android/CunYiAI/build/outputs/apk/ 2>/dev/null || echo "NO APK DIR"
 
       - name: Upload build log
         if: always()
