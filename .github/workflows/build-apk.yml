@@ -39,32 +39,14 @@ jobs:
           yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses
           $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "platforms;android-34" "build-tools;34.0.0" "platform-tools"
 
-      - name: Setup Gradle
-        uses: gradle/gradle-build-action@v2
-        with:
-          gradle-version: 8.5
-
       - name: Build Debug APK
         working-directory: ./android/CunYiAI
         run: |
-          ./gradlew clean assembleDebug --no-daemon --stacktrace --info 2>&1 | tee build.log
-          echo "=== DIAGNOSE START ===" >> build.log
-          echo "=== APK files in workspace ===" >> build.log
-          find . -name "*.apk" -type f 2>/dev/null || echo "NONE" >> build.log
-          echo "=== build/outputs dir ===" >> build.log
-          ls -laR build/outputs/ 2>/dev/null || echo "NO OUTPUTS DIR" >> build.log
-
-      - name: Diagnose build output
-        if: always()
-        run: |
-          echo "=== APK files in workspace ==="
-          find . -name "*.apk" -type f 2>/dev/null || echo "NONE"
-          echo "=== build/ dir contents ==="
-          find ./android/CunYiAI/build -type f 2>/dev/null | head -100 || echo "NO BUILD DIR"
-          echo "=== source structure ==="
-          ls -laR android/CunYiAI/src/main/ 2>/dev/null | head -50 || echo "NO src/main"
-          echo "=== gradle-wrapper.properties ==="
-          cat android/CunYiAI/gradle/wrapper/gradle-wrapper.properties 2>/dev/null
+          chmod +x gradlew
+          ./gradlew clean assembleDebug --stacktrace 2>&1 | tee build.log
+          echo "=== DIAGNOSE ===" >> build.log
+          find . -name "*.apk" >> build.log || echo "NO APK FOUND" >> build.log
+          ls -la build/outputs/apk/debug/ >> build.log 2>&1 || echo "NO APK DIR" >> build.log
 
       - name: Upload build log
         if: always()
@@ -78,8 +60,6 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: cunyi-ai-debug-apk
-          path: |
-            android/CunYiAI/build/outputs/apk/**/*.apk
-            android/CunYiAI/build/**/*.apk
+          path: android/CunYiAI/build/outputs/apk/debug/
           if-no-files-found: warn
           retention-days: 30
