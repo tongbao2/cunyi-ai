@@ -58,14 +58,14 @@ jobs:
         if: always()
         working-directory: ./android/CunYiAI
         run: |
-          echo "=== gradle build result ==="
-          tail -30 build.log
-          echo ""
           echo "=== APK files ==="
           find . -name "*.apk" -type f 2>/dev/null || echo "NONE"
           echo ""
           echo "=== build/outputs/apk dir ==="
           ls -laR build/outputs/apk/ 2>/dev/null || echo "NO APK DIR"
+          echo ""
+          echo "=== gradle tail ==="
+          tail -50 build.log
 
       - name: Upload build log
         if: always()
