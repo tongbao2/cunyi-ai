@@ -35,7 +35,7 @@ fun LargeButton(
             .fillMaxWidth()
             .height(Dimensions.ButtonHeight.dp),
         enabled = enabled,
-        shape = RoundedCornerShape(Dimensions.CornerRadius),
+        shape = RoundedCornerShape(Dimensions.CornerRadius.dp),
         colors = ButtonDefaults.buttonColors(
             containerColor = containerColor,
             contentColor = contentColor,
@@ -74,7 +74,7 @@ fun SOSButton(
             .fillMaxWidth()
             .height(Dimensions.ButtonHeightLarge.dp),
         enabled = enabled,
-        shape = RoundedCornerShape(Dimensions.CornerRadiusLarge),
+        shape = RoundedCornerShape(Dimensions.CornerRadiusLarge.dp),
         colors = ButtonDefaults.buttonColors(
             containerColor = AlertRed,
             contentColor = Color.White
@@ -104,7 +104,7 @@ fun FunctionCard(
         modifier = modifier
             .fillMaxWidth()
             .clickable(onClick = onClick),
-        shape = RoundedCornerShape(Dimensions.CornerRadius),
+        shape = RoundedCornerShape(Dimensions.CornerRadius.dp),
         colors = CardDefaults.cardColors(containerColor = containerColor),
         elevation = CardDefaults.cardElevation(defaultElevation = Dimensions.CardElevation.dp)
     ) {

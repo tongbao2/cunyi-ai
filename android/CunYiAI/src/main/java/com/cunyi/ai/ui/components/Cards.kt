@@ -35,7 +35,7 @@ fun AlertCard(
 
     Card(
         modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(Dimensions.CornerRadius),
+        shape = RoundedCornerShape(Dimensions.CornerRadius.dp),
         colors = CardDefaults.cardColors(containerColor = backgroundColor.copy(alpha = 0.15f))
     ) {
         Column(
@@ -94,7 +94,7 @@ fun ValueCard(
 
     Card(
         modifier = modifier,
-        shape = RoundedCornerShape(Dimensions.CornerRadius),
+        shape = RoundedCornerShape(Dimensions.CornerRadius.dp),
         colors = CardDefaults.cardColors(containerColor = BackgroundWhite),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
