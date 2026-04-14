@@ -40,8 +40,8 @@ jobs:
           $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "platforms;android-34" "build-tools;34.0.0" "platform-tools"
 
       - name: Setup Gradle Wrapper
-        working-directory: ./android/CunYiAI
         run: |
+          cd android/CunYiAI
           if [ ! -f "gradle/wrapper/gradle-wrapper.jar" ]; then
             mkdir -p gradle/wrapper
             wget -q "https://raw.githubusercontent.com/gradle/gradle/v8.5.0/gradle/wrapper/gradle-wrapper.jar" -O gradle/wrapper/gradle-wrapper.jar
@@ -51,18 +51,22 @@ jobs:
           head -1 gradlew
 
       - name: Build Debug APK
-        working-directory: ./android/CunYiAI
-        run: ./gradlew assembleDebug --no-daemon --stacktrace 2>&1 | tee build.log
+        run: |
+          cd android/CunYiAI
+          ./gradlew assembleDebug --no-daemon --info 2>&1 | tee build.log
 
       - name: Show build result
         if: always()
-        working-directory: ./android/CunYiAI
         run: |
+          cd android/CunYiAI
           echo "=== gradle tail ==="
-          tail -30 build.log
+          tail -50 build.log
           echo ""
           echo "=== APK files ==="
           find . -name "*.apk" -type f 2>/dev/null || echo "NONE"
+          echo ""
+          echo "=== build dir ==="
+          ls -la build/outputs/apk/ 2>/dev/null || echo "NO APK DIR"
 
       - name: Upload build log
         if: always()
