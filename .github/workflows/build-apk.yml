@@ -51,7 +51,12 @@ jobs:
       - name: Build Debug APK
         working-directory: ./android/CunYiAI
         run: |
-          ./gradlew clean assembleDebug --no-daemon --stacktrace 2>&1 | tee build.log
+          ./gradlew clean assembleDebug --no-daemon --stacktrace --info 2>&1 | tee build.log
+          echo "=== DIAGNOSE START ===" >> build.log
+          echo "=== APK files in workspace ===" >> build.log
+          find . -name "*.apk" -type f 2>/dev/null || echo "NONE" >> build.log
+          echo "=== build/outputs dir ===" >> build.log
+          ls -laR build/outputs/ 2>/dev/null || echo "NO OUTPUTS DIR" >> build.log
 
       - name: Diagnose build output
         if: always()
