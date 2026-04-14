@@ -53,7 +53,24 @@ jobs:
       - name: Build Debug APK
         run: |
           cd android/CunYiAI
-          ./gradlew assembleDebug --no-daemon --info 2>&1 | tee build.log
+          ./gradlew assembleDebug --no-daemon 2>&1 | tee build.log
+          GRADLE_EXIT=${PIPESTATUS[0]}
+          echo "GRADLE_EXIT=$GRADLE_EXIT"
+          
+          echo "=== checking for APK ==="
+          find . -name "*.apk" -type f || echo "NO APK FOUND"
+          ls -la build/outputs/apk/debug/ 2>/dev/null || echo "NO APK DIR"
+          cat build/outputs/apk/debug/*.apk 2>/dev/null && echo "APK EXISTS" || echo "NO APK FILE"
+          
+          if [ "$GRADLE_EXIT" -ne 0 ]; then
+            echo "Gradle failed!"
+            exit 1
+          fi
+          
+          if ! find . -name "*.apk" -type f | grep -q .; then
+            echo "No APK found despite successful gradle!"
+            exit 1
+          fi
 
       - name: Upload build directory
         uses: actions/upload-artifact@v4
