@@ -46,11 +46,32 @@ jobs:
       - name: Build Debug APK
         working-directory: ./android/CunYiAI
         run: |
-          gradle clean assembleDebug --stacktrace
+          gradle clean assembleDebug --stacktrace 2>&1 | tee build.log
+
+      - name: Show build log
+        if: always()
+        working-directory: ./android/CunYiAI
+        run: |
+          echo "=== BUILD LOG TAIL (last 100 lines) ==="
+          tail -100 build.log
+          echo "=== APK CHECK ==="
+          find . -name "*.apk" -type f || echo "NO APK FOUND"
 
       - name: Upload build output
+        if: always()
+        working-directory: ./android/CunYiAI
         uses: actions/upload-artifact@v4
         with:
           name: cunyi-ai-debug-apk
-          path: android/CunYiAI/build/outputs/apk/debug/
+          path: build/outputs/apk/debug/
           if-no-files-found: warn
+          retention-days: 30
+
+      - name: Upload build log
+        if: always()
+        working-directory: ./android/CunYiAI
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-log
+          path: build.log
+          retention-days: 7
