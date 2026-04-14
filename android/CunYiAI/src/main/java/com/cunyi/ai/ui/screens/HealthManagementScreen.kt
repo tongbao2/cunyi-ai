@@ -180,7 +180,7 @@ private fun RecordTab(healthRecordManager: HealthRecordManager) {
     }
 }
 
-// ========== 内联健康检查逻辑（替代规则引擎）==========
+// ========== 内联健康检查逻辑 ==========
 
 private fun checkBloodPressureAlert(systolic: Float, diastolic: Float): Triple<AlertLevel, String, String> {
     return when {
