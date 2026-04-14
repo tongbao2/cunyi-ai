@@ -4,9 +4,6 @@ on:
   push:
     branches:
       - main
-  pull_request:
-    branches:
-      - main
 
 jobs:
   build:
@@ -39,27 +36,21 @@ jobs:
           yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses
           $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "platforms;android-34" "build-tools;34.0.0" "platform-tools"
 
+      - name: Install Gradle
+        run: |
+          cd /tmp
+          wget -q https://services.gradle.org/distributions/gradle-8.5-bin.zip
+          unzip -q gradle-8.5-bin.zip -d /opt
+          ln -sf /opt/gradle-8.5/bin/gradle /usr/local/bin/gradle
+
       - name: Build Debug APK
         working-directory: ./android/CunYiAI
         run: |
-          chmod +x gradlew
-          ./gradlew clean assembleDebug --stacktrace 2>&1 | tee build.log
-          echo "=== DIAGNOSE ===" >> build.log
-          find . -name "*.apk" >> build.log || echo "NO APK FOUND" >> build.log
-          ls -la build/outputs/apk/debug/ >> build.log 2>&1 || echo "NO APK DIR" >> build.log
+          gradle clean assembleDebug --stacktrace
 
-      - name: Upload build log
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: build-log
-          path: android/CunYiAI/build.log
-          retention-days: 7
-
-      - name: Upload APK
+      - name: Upload build output
         uses: actions/upload-artifact@v4
         with:
           name: cunyi-ai-debug-apk
           path: android/CunYiAI/build/outputs/apk/debug/
           if-no-files-found: warn
-          retention-days: 30
