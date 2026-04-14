@@ -4,6 +4,9 @@ on:
   push:
     branches:
       - main
+  pull_request:
+    branches:
+      - main
 
 jobs:
   build:
@@ -23,7 +26,7 @@ jobs:
         run: |
           mkdir -p ${{ runner.temp }}/android-sdk
           export ANDROID_HOME=${{ runner.temp }}/android-sdk
-          export ANDROID_SDK_ROOT=$ANDROID_HOME
+          export ANDROID_SDK_ROOT=$ANDROID_SDK_ROOT
           echo "ANDROID_HOME=$ANDROID_HOME" >> "$GITHUB_ENV"
           echo "ANDROID_SDK_ROOT=$ANDROID_SDK_ROOT" >> "$GITHUB_ENV"
           if [ ! -f "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" ]; then
@@ -36,42 +39,47 @@ jobs:
           yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses
           $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "platforms;android-34" "build-tools;34.0.0" "platform-tools"
 
-      - name: Install Gradle
+      - name: Setup Gradle Wrapper
+        working-directory: ./android/CunYiAI
         run: |
-          cd /tmp
-          wget -q https://services.gradle.org/distributions/gradle-8.5-bin.zip
-          unzip -q gradle-8.5-bin.zip -d /opt
-          ln -sf /opt/gradle-8.5/bin/gradle /usr/local/bin/gradle
+          if [ ! -f "gradle/wrapper/gradle-wrapper.jar" ]; then
+            mkdir -p gradle/wrapper
+            wget -q "https://raw.githubusercontent.com/gradle/gradle/v8.5.0/gradle/wrapper/gradle-wrapper.jar" -O gradle/wrapper/gradle-wrapper.jar
+          fi
+          chmod +x gradlew
+          ls -la gradlew gradle/wrapper/
+          head -1 gradlew
 
       - name: Build Debug APK
         working-directory: ./android/CunYiAI
-        run: |
-          gradle clean assembleDebug --stacktrace 2>&1 | tee build.log
+        run: ./gradlew assembleDebug --no-daemon --stacktrace --info 2>&1 | tee build.log
 
-      - name: Show build log
+      - name: Diagnose build output
         if: always()
-        working-directory: ./android/CunYiAI
         run: |
-          echo "=== BUILD LOG TAIL (last 100 lines) ==="
-          tail -100 build.log
-          echo "=== APK CHECK ==="
-          find . -name "*.apk" -type f || echo "NO APK FOUND"
-
-      - name: Upload build output
-        if: always()
-        working-directory: ./android/CunYiAI
-        uses: actions/upload-artifact@v4
-        with:
-          name: cunyi-ai-debug-apk
-          path: build/outputs/apk/debug/
-          if-no-files-found: warn
-          retention-days: 30
+          echo "=== APK files in workspace ==="
+          find . -name "*.apk" -type f 2>/dev/null || echo "NONE"
+          echo "=== build/ dir contents ==="
+          find ./android/CunYiAI/build -type f 2>/dev/null | head -100 || echo "NO BUILD DIR"
+          echo "=== source structure ==="
+          ls -la android/CunYiAI/src/main/ 2>/dev/null | head -50 || echo "NO src/main"
+          echo "=== gradle-wrapper.properties ==="
+          cat android/CunYiAI/gradle/wrapper/gradle-wrapper.properties 2>/dev/null
 
       - name: Upload build log
         if: always()
-        working-directory: ./android/CunYiAI
         uses: actions/upload-artifact@v4
         with:
           name: build-log
-          path: build.log
+          path: android/CunYiAI/build.log
           retention-days: 7
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: cunyi-ai-debug-apk
+          path: |
+            android/CunYiAI/build/outputs/apk/**/*.apk
+            android/CunYiAI/build/**/*.apk
+          if-no-files-found: warn
+          retention-days: 30
