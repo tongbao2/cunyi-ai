@@ -1,4 +1,4 @@
-package com.cunyi.ai.ui.screens
+﻿package com.cunyi.ai.ui.screens
 
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.Canvas
@@ -28,6 +28,7 @@ import kotlinx.coroutines.launch
 @Composable
 fun ModelDownloadScreen(
     modelManager: ModelManager,
+    onBack: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val scope = rememberCoroutineScope()
@@ -39,22 +40,32 @@ fun ModelDownloadScreen(
         modelManager.checkModelState()
     }
 
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("AI模型管理", style = MaterialTheme.typography.headlineMedium) },
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        Icon(Icons.Default.ArrowBack, "返回首页")
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = PrimaryGreen,
+                    titleContentColor = TextOnPrimary,
+                    navigationIconContentColor = TextOnPrimary
+                )
+            )
+        }
+    ) { padding ->
     Column(
         modifier = modifier
             .fillMaxSize()
+            .padding(padding)
             .padding(Dimensions.SpacingL.dp)
             .verticalScroll(rememberScrollState()),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(Dimensions.SpacingM.dp)
     ) {
-        // 标题
-        Text(
-            text = "🤖 AI模型管理",
-            style = MaterialTheme.typography.headlineMedium,
-            color = PrimaryGreen
-        )
-
-        Spacer(modifier = Modifier.height(Dimensions.SpacingS.dp))
 
         // 模型信息卡片
         Card(
@@ -415,5 +426,4 @@ private fun CircularProgressWithLabel(
                 color = PrimaryGreen
             )
         }
-    }
-}
+        }\n    }\n}

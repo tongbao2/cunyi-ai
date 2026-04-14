@@ -1,4 +1,4 @@
-package com.cunyi.ai
+﻿package com.cunyi.ai
 
 import android.Manifest
 import android.os.Bundle
@@ -23,6 +23,7 @@ import kotlinx.coroutines.flow.StateFlow
 import com.cunyi.ai.manager.AiEngine
 import com.cunyi.ai.manager.HealthRecordManager
 import com.cunyi.ai.manager.ModelManager
+import com.cunyi.ai.manager.TtsManager
 import com.cunyi.ai.manager.SOSManager
 import com.cunyi.ai.manager.VoiceInputManager
 import com.cunyi.ai.ui.components.*
@@ -34,8 +35,9 @@ class MainActivity : ComponentActivity() {
     private lateinit var healthRecordManager: HealthRecordManager
     private lateinit var sosManager: SOSManager
     private lateinit var modelManager: ModelManager
+    private lateinit var ttsManager: TtsManager
     private lateinit var voiceInputManager: VoiceInputManager
-
+    
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
@@ -43,15 +45,17 @@ class MainActivity : ComponentActivity() {
         healthRecordManager = HealthRecordManager(this)
         sosManager = SOSManager(this)
         modelManager = ModelManager(this)
+        ttsManager = TtsManager(this)
         voiceInputManager = VoiceInputManager(this)
         voiceInputManager.initialize()
-
+        
         setContent {
             CunYiAITheme {
                 CunYiAIMainScreen(
                     healthRecordManager = healthRecordManager,
                     sosManager = sosManager,
                     modelManager = modelManager,
+                    ttsManager = ttsManager,
                     voiceInputManager = voiceInputManager
                 )
             }
@@ -59,8 +63,9 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onDestroy() {
-        super.onDestroy()
+        ttsManager.shutdown()
         voiceInputManager.destroy()
+        super.onDestroy()
     }
 }
 
@@ -70,6 +75,7 @@ fun CunYiAIMainScreen(
     healthRecordManager: HealthRecordManager,
     sosManager: SOSManager,
     modelManager: ModelManager,
+    ttsManager: TtsManager,
     voiceInputManager: VoiceInputManager
 ) {
     var currentScreen by remember { mutableStateOf<Screen>(Screen.Home) }
@@ -160,12 +166,17 @@ fun CunYiAIMainScreen(
                     onSOS = { currentScreen = Screen.SOS },
                     messages = chatMessages,
                     voiceState = voiceInputManager.voiceState,
+                    ttsManager = ttsManager,
                     onSendMessage = { message ->
                         // 添加用户消息
                         chatMessages = chatMessages + ChatMessage(message, isUser = true)
                         // 调用 AI 引擎生成回复
                         val aiResponse = AiEngine.generateResponse(message)
                         chatMessages = chatMessages + ChatMessage(aiResponse, isUser = false)
+                        // 语音播报 AI 回复（受开关控制）
+                        if (ttsEnabled) {
+                            ttsManager.speak(aiResponse)
+                        }
                     },
                     onVoiceStart = { cb -> voiceInputManager.startListening(cb) },
                     onVoiceStop = { voiceInputManager.stopListening() }
@@ -187,6 +198,7 @@ fun CunYiAIMainScreen(
                 )
                 Screen.ModelDownload -> ModelDownloadScreen(
                     modelManager = modelManager,
+                    onBack = { currentScreen = Screen.Home },
                     modifier = Modifier.fillMaxSize()
                 )
             }
@@ -264,7 +276,7 @@ private fun HomeScreen(
         item {
             FunctionCard(
                 title = "紧急求救",
-                description = "一键发送求救短信给家人",
+                description = "一键拨打120急救或紧急联系人",
                 icon = "🆘",
                 onClick = onNavigateToSOS
             )
@@ -321,6 +333,7 @@ private fun ChatScreen(
     onSOS: () -> Unit,
     messages: List<ChatMessage>,
     voiceState: StateFlow<VoiceInputManager.VoiceState>,
+    ttsManager: TtsManager,
     onSendMessage: (String) -> Unit,
     onVoiceStart: ((String) -> Unit) -> Unit,
     onVoiceStop: () -> Unit
@@ -328,6 +341,7 @@ private fun ChatScreen(
     var inputText by remember { mutableStateOf("") }
     val currentVoiceState by voiceState.collectAsState()
     var isRecording by remember { mutableStateOf(false) }
+    var ttsEnabled by remember { mutableStateOf(true) }
 
     // 监听语音识别结果
     LaunchedEffect(currentVoiceState) {
@@ -359,6 +373,14 @@ private fun ChatScreen(
                     }
                 },
                 actions = {
+                    // TTS 语音播报开关
+                    IconButton(onClick = { ttsEnabled = !ttsEnabled }) {
+                        Icon(
+                            if (ttsEnabled) Icons.Default.VolumeUp else Icons.Default.VolumeOff,
+                            if (ttsEnabled) "关闭语音播报" else "开启语音播报",
+                            tint = if (ttsEnabled) TextOnPrimary else TextOnPrimary.copy(alpha = 0.5f)
+                        )
+                    }
                     // SOS 按钮
                     IconButton(onClick = onSOS) {
                         Icon(

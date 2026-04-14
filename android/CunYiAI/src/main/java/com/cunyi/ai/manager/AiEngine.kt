@@ -1,385 +1,147 @@
-package com.cunyi.ai.manager
-
-import com.cunyi.ai.data.AlertLevel
+﻿package com.cunyi.ai.manager
 
 /**
- * AI问诊引擎
- * 当前使用规则引擎 + 关键词匹配提供健康建议
- * 后续可升级为 Gemma 4 LLM 推理
+ * AI聊天引擎
+ * 支持闲聊和健康咨询，已移除规则引擎
+ * 当前使用内置智能回复，后续可接入云端LLM API
  */
 object AiEngine {
 
-    // 症状关键词映射
-    private val symptomKeywords = mapOf(
-        listOf("头痛", "头疼", "头昏", "头晕") to SymptomCategory.HEADACHE,
-        listOf("胸闷", "胸痛", "胸口") to SymptomCategory.CHEST_PAIN,
-        listOf("咳嗽", "咳痰", "咳血") to SymptomCategory.COUGH,
-        listOf("发烧", "发热", "体温") to SymptomCategory.FEVER,
-        listOf("恶心", "呕吐", "反胃") to SymptomCategory.DIGESTIVE,
-        listOf("腹泻", "拉肚子", "大便稀") to SymptomCategory.DIARRHEA,
-        listOf("腰痛", "腰疼", "腰酸") to SymptomCategory.BACK_PAIN,
-        listOf("关节", "关节痛", "关节疼") to SymptomCategory.JOINT_PAIN,
-        listOf("皮疹", "皮肤", "瘙痒") to SymptomCategory.SKIN,
-        listOf("失眠", "睡不着", "睡眠") to SymptomCategory.SLEEP,
-        listOf("血压", "高压", "低压") to SymptomCategory.BLOOD_PRESSURE,
-        listOf("血糖", "血糖高", "血糖低") to SymptomCategory.BLOOD_SUGAR,
-        listOf("心慌", "心跳", "心率") to SymptomCategory.HEART_RATE,
-    )
-
-    private enum class SymptomCategory {
-        HEADACHE, CHEST_PAIN, COUGH, FEVER, DIGESTIVE, DIARRHEA,
-        BACK_PAIN, JOINT_PAIN, SKIN, SLEEP, BLOOD_PRESSURE, BLOOD_SUGAR, HEART_RATE
-    }
-
     /**
-     * 处理用户输入，返回AI回复
+     * 生成AI回复
      */
     fun generateResponse(userMessage: String): String {
-        val msg = userMessage.lowercase().trim()
+        val msg = userMessage.trim()
+        if (msg.isBlank()) return "请说点什么吧～"
 
-        // 1. 先尝试解析健康数据查询
-        val healthResponse = parseHealthQuery(msg)
-        if (healthResponse != null) return healthResponse
-
-        // 2. 尝试匹配症状
-        val matchedCategory = matchSymptom(msg)
-        if (matchedCategory != null) {
-            return generateSymptomAdvice(matchedCategory, msg)
+        // 问候
+        if (msg.matches(Regex(".*(你好|您好|hi|hello|嗨|hey).*", RegexOption.IGNORE_CASE))) {
+            return "你好！我是村医AI助手🏥 有什么可以帮你的吗？可以跟我聊天，也可以咨询健康问题哦～"
         }
 
-        // 3. 通用健康问答
-        return generateGeneralResponse(msg)
+        // 自我介绍
+        if (msg.matches(Regex(".*(你是谁|什么ai|介绍.*自己|你叫什么).*", RegexOption.IGNORE_CASE))) {
+            return "我是村医AI🤖，你的健康助手！可以陪你聊天，也能回答健康问题。虽然我不是专业医生，但可以给你一些建议和参考。有紧急情况记得拨打120哦！"
+        }
+
+        // 感谢
+        if (msg.matches(Regex(".*(谢谢|感谢|多谢|thanks).*", RegexOption.IGNORE_CASE))) {
+            return randomPick("不客气！随时找我聊～😊", "能帮到你就好！💪", "不用谢～有需要再找我哦！")
+        }
+
+        // 心情/情绪
+        if (msg.matches(Regex(".*(不开心|难过|伤心|郁闷|烦|焦虑|害怕|担心|孤独|寂寞).*", RegexOption.IGNORE_CASE))) {
+            return "听起来你心情不太好😔 愿意跟我说说吗？\n\n有时候跟人聊聊会舒服很多。如果持续觉得不好，建议跟家人或朋友说说，也可以寻求专业帮助。我一直在的！"
+        }
+
+        // 天气
+        if (msg.matches(Regex(".*(天气|下雨|晴天|冷|热).*", RegexOption.IGNORE_CASE))) {
+            return "我暂时还不能查天气呢😅 你可以看看手机上的天气应用。提醒一下，天气变化时注意增减衣物，尤其是老年朋友要特别注意保暖！"
+        }
+
+        // 吃饭/饮食
+        if (msg.matches(Regex(".*(吃什么|好吃|饿了|做饭|饮食|食谱).*", RegexOption.IGNORE_CASE))) {
+            return randomPick(
+                "今天想吃点什么呢？🍎 建议荤素搭配，多吃蔬菜水果，少油少盐更健康！",
+                "好好吃饭很重要哦！建议多吃粗粮、蔬菜，适量蛋白质，少吃油炸食品～",
+                "不知道吃什么的话，试试时令蔬菜？清淡饮食对身体健康很有好处😊"
+            )
+        }
+
+        // 睡眠
+        if (msg.matches(Regex(".*(睡不着|失眠|睡眠|熬夜|做梦|早醒).*", RegexOption.IGNORE_CASE))) {
+            return "😴 睡眠小建议：\n\n1. 固定作息时间，每天同一时间睡觉\n2. 睡前少看手机，可以听听轻音乐\n3. 卧室保持安静、黑暗\n4. 睡前不要喝茶和咖啡\n5. 适当运动有助于睡眠\n\n如果长期失眠，建议去看医生哦～"
+        }
+
+        // 运动
+        if (msg.matches(Regex(".*(运动|锻炼|跑步|散步|健身|太极).*", RegexOption.IGNORE_CASE))) {
+            return "🏃 运动建议：\n\n1. 每天散步30分钟就是很好的运动\n2. 太极拳很适合中老年朋友\n3. 运动要循序渐进，别勉强\n4. 饭后1小时再运动\n5. 运动时注意安全，量力而行\n\n动起来就比坐着强！加油💪"
+        }
+
+        // 血压
+        if (msg.matches(Regex(".*(血压|高压|低压|收缩压|舒张压).*", RegexOption.IGNORE_CASE))) {
+            return "💉 血压参考范围：\n\n• 正常：<120/80 mmHg\n• 偏高：120-139/80-89\n• 高血压：≥140/90\n\n管理建议：低盐饮食、规律运动、按时服药、定期监测。血压波动大要及时就医！"
+        }
+
+        // 血糖
+        if (msg.matches(Regex(".*(血糖|糖尿病|糖化).*", RegexOption.IGNORE_CASE))) {
+            return "💉 血糖参考范围：\n\n• 空腹：3.9-6.1 mmol/L\n• 餐后2h：<7.8\n• 糖尿病：空腹≥7.0 或 餐后≥11.1\n\n控糖建议：少吃精米白面，多吃粗粮蔬菜，适量运动，定期检测。"
+        }
+
+        // 头痛/头晕
+        if (msg.matches(Regex(".*(头痛|头疼|头晕|头昏).*", RegexOption.IGNORE_CASE))) {
+            return "🩺 头痛/头晕要注意：\n\n常见原因：血压波动、睡眠不足、颈椎问题、感冒等。\n\n建议：\n1. 先量一下血压\n2. 注意休息\n3. 如持续超过3天，或伴有呕吐、视物模糊，请就医\n4. 突发剧烈头痛请立即拨打120！"
+        }
+
+        // 胸闷/胸痛
+        if (msg.matches(Regex(".*(胸闷|胸痛|胸口|心慌|心悸).*", RegexOption.IGNORE_CASE))) {
+            return "🚨 胸闷/胸痛需要重视！\n\n⚠️ 如果出现以下情况请立即拨打120：\n• 胸痛持续>10分钟\n• 伴出冷汗、恶心\n• 疼痛向左肩/下颌放射\n\n平时注意：定期检查心脏、控制血压血糖血脂、避免情绪激动。"
+        }
+
+        // 咳嗽
+        if (msg.matches(Regex(".*(咳嗽|咳痰|嗓子|喉咙).*", RegexOption.IGNORE_CASE))) {
+            return "🩺 咳嗽建议：\n\n1. 多喝温水，保持呼吸道湿润\n2. 观察痰的颜色（黄绿色可能感染）\n3. 避免刺激性食物\n4. 超过2周或有血痰、发热，请就医"
+        }
+
+        // 发热
+        if (msg.matches(Regex(".*(发烧|发热|体温|感冒).*", RegexOption.IGNORE_CASE))) {
+            return "🌡️ 发热处理：\n\n• 37.3-38℃ 低热：多喝水、休息\n• 38.5℃以上：可吃退热药\n• 物理降温：温水擦浴\n• 持续高热>3天或伴皮疹请就医"
+        }
+
+        // 腰痛/关节
+        if (msg.matches(Regex(".*(腰痛|腰疼|关节|腿疼|膝盖).*", RegexOption.IGNORE_CASE))) {
+            return "🩺 腰痛/关节痛建议：\n\n1. 注意保暖，避免受凉\n2. 适度活动，不要久坐久站\n3. 如伴红肿热痛，可能发炎\n4. 持续加重请就医检查"
+        }
+
+        // 用药
+        if (msg.matches(Regex(".*(吃药|服药|用药|药量|副作用).*", RegexOption.IGNORE_CASE))) {
+            return "💊 用药提醒：\n\n1. 严格遵医嘱服药\n2. 不要自行停药或加减量\n3. 注意药物副作用\n4. 定期复查让医生评估\n5. 不同药物间注意相互作用\n\n具体用药问题请咨询医生！"
+        }
+
+        // 就医
+        if (msg.matches(Regex(".*(去医院|看医生|门诊|挂号|检查).*", RegexOption.IGNORE_CASE))) {
+            return "🏥 就医建议：\n\n• 常见病可先去社区卫生中心\n• 复杂病情去县级医院\n• 急症直接拨打120！\n\n就医时带好：\n1. 身份证和医保卡\n2. 以前的检查报告\n3. 正在吃的药"
+        }
+
+        // 闲聊 - 笑话
+        if (msg.matches(Regex(".*(笑话|搞笑|逗我|开心|有趣).*", RegexOption.IGNORE_CASE))) {
+            return randomPick(
+                "来一个！😄\n\n医生：你这是缺乏运动导致的。\n患者：那我多走路？\n医生：不，你得多来医院走动走动，我房租还没交呢～",
+                "哈哈😄\n\n患者：医生，我睡觉总流口水怎么办？\n医生：你睡觉时把嘴闭上不就行了！\n患者：…",
+                "来一个冷的❄️\n\n为什么程序员总是分不清万圣节和圣诞节？\n因为 Oct 31 = Dec 25 🤓"
+            )
+        }
+
+        // 闲聊 - 讲故事
+        if (msg.matches(Regex(".*(讲故事|故事|闲聊|聊天|无聊).*", RegexOption.IGNORE_CASE))) {
+            return randomPick(
+                "讲个小故事吧📖\n\n有个老人每天早起散步，邻居问他为什么这么勤快。他说：'因为我想多看看这个世界呀！' \n\n其实健康就是这样，每天坚持一点点，身体就会回报你😊",
+                "来聊聊天吧！😊\n\n你今天过得怎么样？有什么想说的都可以跟我聊聊～我虽然是个AI，但我会认真听的！",
+                "无聊了呀～那我给你出个谜语吧🤔\n\n什么水不能喝？\n.\n.\n.\n答案是：薪水！😂"
+            )
+        }
+
+        // 默认回复 - 友好闲聊
+        return randomPick(
+            "嗯嗯，我听到了～${pickFollowUp()}",
+            "有意思！${pickFollowUp()}",
+            "好的呀～${pickFollowUp()}",
+            "你说得对！${pickFollowUp()}",
+            "我能理解～如果有什么健康问题也可以问我哦！🏥"
+        )
     }
 
-    /**
-     * 解析健康数据查询
-     */
-    private fun parseHealthQuery(msg: String): String? {
-        // 血压查询：高压xxx低压xxx 或 血压xxx/xxx
-        val bpRegex = Regex("(?:血压|高压|收缩压)[^\\d]*(\\d{2,3})(?:/|到|至)\\s*(\\d{2,3})")
-        val bpMatch = bpRegex.find(msg)
-        if (bpMatch != null) {
-            val systolic = bpMatch.groupValues[1].toFloatOrNull() ?: return null
-            val diastolic = bpMatch.groupValues[2].toFloatOrNull() ?: return null
-            val alert = RulesEngine.checkBloodPressure(systolic, diastolic)
-            return buildAlertResponse(alert)
-        }
-
-        // 血糖查询
-        val bsRegex = Regex("(?:血糖)[^\\d]*(\\d{1,2}\\.?\\d?)")
-        val bsMatch = bsRegex.find(msg)
-        if (bsMatch != null) {
-            val value = bsMatch.groupValues[1].toFloatOrNull() ?: return null
-            val isFasting = msg.contains("空腹") || msg.contains("饭前")
-            val alert = RulesEngine.checkBloodSugar(value, isFasting)
-            return buildAlertResponse(alert)
-        }
-
-        // 心率查询
-        val hrRegex = Regex("(?:心率|心跳|脉搏)[^\\d]*(\\d{2,3})")
-        val hrMatch = hrRegex.find(msg)
-        if (hrMatch != null) {
-            val value = hrMatch.groupValues[1].toFloatOrNull() ?: return null
-            val alert = RulesEngine.checkHeartRate(value)
-            return buildAlertResponse(alert)
-        }
-
-        return null
-    }
-
-    /**
-     * 匹配症状关键词
-     */
-    private fun matchSymptom(msg: String): SymptomCategory? {
-        for ((keywords, category) in symptomKeywords) {
-            if (keywords.any { it.lowercase() in msg }) {
-                return category
-            }
-        }
-        return null
-    }
-
-    /**
-     * 生成症状建议
-     */
-    private fun generateSymptomAdvice(category: SymptomCategory, msg: String): String {
-        return when (category) {
-            SymptomCategory.HEADACHE -> buildString {
-                appendLine("🩺 关于头痛的分析：")
-                appendLine()
-                append("根据您描述的情况，头痛可能由以下原因引起：")
-                append("① 血压升高；② 睡眠不足或疲劳；")
-                append("③ 眼部疲劳；④ 情绪紧张；⑤ 感冒发热。")
-                appendLine()
-                appendLine("建议措施：")
-                appendLine("1. 测量血压，排除高血压")
-                appendLine("2. 保证充足睡眠")
-                appendLine("3. 适当休息，缓解眼部和精神疲劳")
-                appendLine("4. 如持续超过3天或伴有呕吐、视物模糊，请立即就医")
-            }
-
-            SymptomCategory.CHEST_PAIN -> buildString {
-                appendLine("🩺 胸闷/胸痛需要高度重视！")
-                appendLine()
-                append("引起胸闷胸痛的原因较多：")
-                append("① 心脏问题（心绞痛、心肌缺血）；")
-                append("② 肺部问题（肺炎、气胸）；")
-                append("③ 消化系统（胃食管反流）；")
-                append("④ 肌肉骨骼问题。")
-                appendLine()
-                appendLine("⚠️ 如出现以下情况，请立即拨打120：")
-                appendLine("• 胸痛持续超过10分钟")
-                appendLine("• 伴有出冷汗、恶心")
-                appendLine("• 疼痛向左肩或下颌放射")
-                appendLine("• 既往有心脏病史")
-                appendLine()
-                append("建议：尽快到就近医院心内科就诊，做心电图检查。")
-            }
-
-            SymptomCategory.COUGH -> buildString {
-                appendLine("🩺 关于咳嗽的分析：")
-                appendLine()
-                append("咳嗽的常见原因：")
-                append("① 感冒、流感等呼吸道感染；")
-                append("② 过敏性咳嗽；")
-                append("③ 慢性支气管炎；")
-                append("④ 肺部感染或结核。")
-                appendLine()
-                appendLine("建议措施：")
-                appendLine("1. 多喝温水，保持呼吸道湿润")
-                appendLine("2. 如有痰，观察痰的颜色（黄绿色提示细菌感染）")
-                appendLine("3. 避免刺激性食物和烟雾")
-                appendLine("4. 如咳嗽超过2周或伴有血痰、发热，请就医")
-            }
-
-            SymptomCategory.FEVER -> buildString {
-                appendLine("🩺 关于发热的处理建议：")
-                appendLine()
-                appendLine("发热的分度（腋下温度）：")
-                appendLine("• 低热：37.3-38℃")
-                appendLine("• 中等热：38.1-39℃")
-                appendLine("• 高热：39.1-41℃")
-                appendLine("• 超高热：>41℃")
-                appendLine()
-                appendLine("处理措施：")
-                appendLine("1. 多饮水，防止脱水")
-                appendLine("2. 38.5℃以上可服用退热药（布洛芬或对乙酰氨基酚）")
-                appendLine("3. 物理降温（温水擦浴）")
-                appendLine("4. 如持续高热>3天或出现皮疹、抽搐，请立即就医")
-            }
-
-            SymptomCategory.DIGESTIVE -> buildString {
-                appendLine("🩺 关于消化不适的分析：")
-                appendLine()
-                append("恶心呕吐的常见原因：")
-                append("① 急性胃肠炎；② 食物中毒；")
-                append("③ 晕车晕船；④ 妊娠反应；")
-                append("⑤ 颅内压增高（危险）。")
-                appendLine()
-                appendLine("建议措施：")
-                appendLine("1. 清淡饮食，少量多餐")
-                appendLine("2. 补充水分和电解质")
-                appendLine("3. 避免油腻、辛辣食物")
-                appendLine("4. 如反复呕吐、无法进食或伴有头痛，请就医")
-            }
-
-            SymptomCategory.DIARRHEA -> buildString {
-                appendLine("🩺 关于腹泻的处理建议：")
-                appendLine()
-                appendLine("腹泻的处理原则：")
-                appendLine("1. 补充水分和电解质（口服补液盐）")
-                appendLine("2. 清淡饮食，避免乳制品和高脂肪食物")
-                appendLine("3. 观察大便性状（血便需立即就医）")
-                appendLine()
-                appendLine("⚠️ 需立即就医的情况：")
-                appendLine("• 大便带血或呈黑色")
-                appendLine("• 腹泻超过3天无好转")
-                appendLine("• 严重脱水（口干、尿少、头晕）")
-                appendLine("• 发热>38.5℃")
-            }
-
-            SymptomCategory.BACK_PAIN -> buildString {
-                appendLine("🩺 关于腰痛的分析：")
-                appendLine()
-                append("腰痛的常见原因：")
-                append("① 腰肌劳损（最常见）；② 腰椎间盘突出；")
-                append("③ 泌尿系统结石；④ 妇科问题（女性）。")
-                appendLine()
-                appendLine("建议措施：")
-                appendLine("1. 避免久坐久站")
-                appendLine("2. 睡硬板床")
-                appendLine("3. 适度腰部锻炼")
-                appendLine("4. 如伴有下肢麻木或大小便异常，请立即就医")
-            }
-
-            SymptomCategory.JOINT_PAIN -> buildString {
-                appendLine("🩺 关于关节痛的分析：")
-                appendLine()
-                append("关节痛的常见原因：")
-                append("① 骨关节炎；② 类风湿性关节炎；")
-                append("③ 痛风；④ 风湿热。")
-                appendLine()
-                appendLine("建议措施：")
-                appendLine("1. 注意关节保暖")
-                appendLine("2. 避免过度使用关节")
-                appendLine("3. 观察是否伴有红肿热痛（提示炎症）")
-                appendLine("4. 如多关节受累或晨僵>1小时，请就医")
-            }
-
-            SymptomCategory.SKIN -> buildString {
-                appendLine("🩺 关于皮肤症状的分析：")
-                appendLine()
-                append("常见皮肤问题：")
-                append("① 湿疹、皮炎；② 荨麻疹（过敏）；")
-                append("③ 带状疱疹；④ 感染性疾病。")
-                appendLine()
-                appendLine("建议措施：")
-                appendLine("1. 保持皮肤清洁干燥")
-                appendLine("2. 避免抓挠，防止感染")
-                appendLine("3. 观察皮疹形态和分布")
-                appendLine("4. 如皮疹扩散、发热或口腔黏膜受累，请就医")
-            }
-
-            SymptomCategory.SLEEP -> buildString {
-                appendLine("🩺 关于睡眠问题的建议：")
-                appendLine()
-                appendLine("改善睡眠的措施：")
-                appendLine("1. 固定作息时间")
-                appendLine("2. 睡前避免咖啡、浓茶、手机")
-                appendLine("3. 营造安静、黑暗的睡眠环境")
-                appendLine("4. 适度运动，但避免睡前剧烈运动")
-                appendLine()
-                appendLine("如长期失眠（>3个月），建议就医寻求专业帮助")
-            }
-
-            SymptomCategory.BLOOD_PRESSURE -> buildString {
-                appendLine("💉 血压健康指导：")
-                appendLine()
-                appendLine("正常血压范围（诊室测量）：")
-                appendLine("• 正常：<120/80 mmHg")
-                appendLine("• 正常高值：120-139/80-89 mmHg")
-                appendLine("• 高血压：≥140/90 mmHg")
-                appendLine()
-                appendLine("管理建议：")
-                appendLine("1. 低盐饮食（<5g/天）")
-                appendLine("2. 适量运动（每周150分钟中等强度）")
-                appendLine("3. 控制体重")
-                appendLine("4. 按时服药，定期监测")
-            }
-
-            SymptomCategory.BLOOD_SUGAR -> buildString {
-                appendLine("💉 血糖健康指导：")
-                appendLine()
-                appendLine("血糖正常范围（指尖血糖）：")
-                appendLine("• 空腹：3.9-6.1 mmol/L")
-                appendLine("• 餐后2h：<7.8 mmol/L")
-                appendLine()
-                appendLine("糖尿病诊断标准：")
-                appendLine("• 空腹≥7.0 mmol/L")
-                appendLine("• 随机或餐后≥11.1 mmol/L")
-                appendLine()
-                appendLine("管理建议：")
-                appendLine("1. 控制碳水化合物摄入")
-                appendLine("2. 适量运动")
-                appendLine("3. 定期监测血糖")
-                appendLine("4. 按医嘱用药")
-            }
-
-            SymptomCategory.HEART_RATE -> buildString {
-                appendLine("💓 心率健康指导：")
-                appendLine()
-                appendLine("正常静息心率：60-100 次/分")
-                appendLine("• 运动员：40-60 次/分（正常）")
-                appendLine("• 心动过速：>100 次/分")
-                appendLine("• 心动过缓：<60 次/分")
-                appendLine()
-                appendLine("建议：")
-                appendLine("1. 测量前静坐5分钟")
-                appendLine("2. 避免咖啡因和刺激性饮料")
-                appendLine("3. 如持续心动过速或过缓，请就医")
-            }
-        }
-    }
-
-    /**
-     * 生成通用回复
-     */
-    private fun generateGeneralResponse(msg: String): String {
-        return when {
-            // 问候
-            msg.contains("你好") || msg.contains("您好") || msg.contains("hi") || msg.contains("hello") ->
-                "您好！我是村医AI助手🏥\n\n请描述您的症状或健康问题，我会尽力为您提供健康建议。\n\n您也可以告诉我您的血压、血糖或心率数值，我来帮您分析。"
-
-            // 感谢
-            msg.contains("谢谢") || msg.contains("感谢") ->
-                "不客气！祝您身体健康！🌿\n\n如有其他健康问题，随时可以问我。"
-
-            // 关于AI
-            msg.contains("你是谁") || msg.contains("什么ai") || msg.contains("什么模型") ->
-                "我是村医AI🤖，一款面向农村老人的离线健康助手。\n\n我可以帮您：\n• 分析血压、血糖、心率\n• 给出症状健康建议\n• 提供就医指导\n\n⚠️ AI建议仅供参考，不能替代医生诊断。"
-
-            // 就医建议
-            msg.contains("去医") || msg.contains("医院") || msg.contains("门诊") ->
-                "🏥 就医建议：\n\n一般常见病可先到乡镇卫生院或社区卫生服务中心就诊。\n\n如遇到以下情况，建议去县级医院：\n• 症状持续不缓解\n• 需要做检查（CT、超声等）\n• 病情较复杂\n\n急症请直接拨打120！"
-
-            // 药物咨询
-            msg.contains("吃药") || msg.contains("服药") || msg.contains("用药") ->
-                "💊 用药提醒：\n\n1. 遵医嘱按时服药，不要自行停药或换药\n2. 了解药物副作用\n3. 记录用药时间和反应\n4. 定期复查，让医生评估效果\n\n如有具体用药问题，建议咨询您的医生。"
-
-            // 饮食建议
-            msg.contains("饮食") || msg.contains("吃什么") || msg.contains("食谱") ->
-                "🍎 健康饮食建议：\n\n1. 少盐：每天<5克\n2. 少油：少吃肥肉和油炸食品\n3. 多蔬菜：每天500克以上\n4. 适量水果\n5. 粗细粮搭配\n\n具体饮食方案应根据您的健康状况调整。"
-
-            // 运动建议
-            msg.contains("运动") || msg.contains("锻炼") || msg.contains("跑步") ->
-                "🏃 运动建议：\n\n1. 每周至少150分钟中等强度有氧运动\n2. 如快走、慢跑、骑车、游泳\n3. 运动前热身，运动后拉伸\n4. 根据身体状况调整强度\n5. 糖尿病患者运动后注意低血糖"
-
-            else ->
-                buildString {
-                    appendLine("🤔 我理解您的询问。")
-                    appendLine()
-                    append("为了给您更好的建议，请尽量详细描述：")
-                    appendLine()
-                    appendLine("• 具体症状（部位、持续时间、诱因）")
-                    appendLine("• 您最近的健康数据（如有）")
-                    appendLine("• 是否在服用药物")
-                    appendLine()
-                    append("示例：\"我头痛3天了，伴有头晕\"")
-                    appendLine()
-                    appendLine("---")
-                    appendLine("⚠️ 如有紧急情况，请拨打120！")
-                }
-        }
-    }
-
-    /**
-     * 构建警报响应
-     */
-    private fun buildAlertResponse(alert: com.cunyi.ai.data.HealthAlert): String {
-        val emoji = when (alert.level) {
-            AlertLevel.RED -> "🚨"
-            AlertLevel.ORANGE -> "⚠️"
-            AlertLevel.YELLOW -> "📢"
-            AlertLevel.GREEN -> "✅"
-        }
-        return buildString {
-            appendLine("$emoji ${alert.title}")
-            appendLine()
-            append(alert.message)
-            appendLine()
-            appendLine()
-            appendLine("---")
-            appendLine("⚠️ 本建议仅供参考，请以医生诊断为准。如有不适，请及时就医。")
-        }
-    }
-
-    /**
-     * 检查模型是否可用（当前版本始终可用，因为使用规则引擎）
-     */
     fun isModelReady(): Boolean = true
 
-    /**
-     * 获取模型状态描述
-     */
-    fun getModelStatus(): String = "AI已就绪（规则引擎模式）"
+    fun getModelStatus(): String = "AI已就绪"
+
+    private fun randomPick(vararg options: String): String = options.random()
+
+    private fun pickFollowUp(): String = listOf(
+        "还有什么想聊的吗？",
+        "有健康问题也可以问我哦🏥",
+        "你也可以试试语音跟我说话🎤",
+        "想了解什么都可以问我～",
+        "有什么需要帮忙的吗？"
+    ).random()
 }

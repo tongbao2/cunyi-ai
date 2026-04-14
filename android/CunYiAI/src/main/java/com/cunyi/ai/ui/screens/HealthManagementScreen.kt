@@ -17,7 +17,6 @@ import com.cunyi.ai.data.HealthAlert
 import com.cunyi.ai.data.RecordType
 import com.cunyi.ai.data.AlertLevel
 import com.cunyi.ai.manager.HealthRecordManager
-import com.cunyi.ai.manager.RulesEngine
 import com.cunyi.ai.ui.components.*
 import com.cunyi.ai.ui.theme.*
 
@@ -133,14 +132,14 @@ private fun RecordTab(healthRecordManager: HealthRecordManager) {
         BloodPressureDialog(
             onDismiss = { showBloodPressureDialog = false },
             onConfirm = { systolic, diastolic ->
-                val alert = RulesEngine.checkBloodPressure(systolic, diastolic)
+                val (level, title, message) = checkBloodPressureAlert(systolic, diastolic)
                 val record = HealthRecord(
                     type = RecordType.BLOOD_PRESSURE,
                     value = systolic,
                     secondaryValue = diastolic
                 )
                 healthRecordManager.saveRecord(record)
-                lastAlert = alert
+                lastAlert = HealthAlert(level, title, message, record = record)
                 showBloodPressureDialog = false
             }
         )
@@ -151,13 +150,13 @@ private fun RecordTab(healthRecordManager: HealthRecordManager) {
         BloodSugarDialog(
             onDismiss = { showBloodSugarDialog = false },
             onConfirm = { value, isFasting ->
-                val alert = RulesEngine.checkBloodSugar(value, isFasting)
+                val (level, title, message) = checkBloodSugarAlert(value)
                 val record = HealthRecord(
                     type = RecordType.BLOOD_SUGAR,
                     value = value
                 )
                 healthRecordManager.saveRecord(record)
-                lastAlert = alert
+                lastAlert = HealthAlert(level, title, message, record = record)
                 showBloodSugarDialog = false
             }
         )
@@ -168,15 +167,132 @@ private fun RecordTab(healthRecordManager: HealthRecordManager) {
         HeartRateDialog(
             onDismiss = { showHeartRateDialog = false },
             onConfirm = { value ->
-                val alert = RulesEngine.checkHeartRate(value)
+                val (level, title, message) = checkHeartRateAlert(value)
                 val record = HealthRecord(
                     type = RecordType.HEART_RATE,
                     value = value
                 )
                 healthRecordManager.saveRecord(record)
-                lastAlert = alert
+                lastAlert = HealthAlert(level, title, message, record = record)
                 showHeartRateDialog = false
             }
+        )
+    }
+}
+
+// ========== 内联健康检查逻辑（替代规则引擎）==========
+
+private fun checkBloodPressureAlert(systolic: Float, diastolic: Float): Triple<AlertLevel, String, String> {
+    return when {
+        systolic > 180 || diastolic > 120 -> Triple(
+            AlertLevel.RED,
+            "血压危险！立即就医！",
+            "收缩压 ${systolic.toInt()}mmHg，舒张压 ${diastolic.toInt()}mmHg，严重超标！请立即拨打120或前往最近医院！"
+        )
+        systolic < 90 || diastolic < 60 -> Triple(
+            AlertLevel.RED,
+            "血压过低！",
+            "血压偏低，可能导致晕厥。请坐下休息并尽快就医。"
+        )
+        systolic > 160 || diastolic > 100 -> Triple(
+            AlertLevel.ORANGE,
+            "血压偏高！",
+            "收缩压 ${systolic.toInt()}mmHg，舒张压 ${diastolic.toInt()}mmHg，建议尽快就医调整用药。"
+        )
+        systolic > 140 || diastolic > 90 -> Triple(
+            AlertLevel.YELLOW,
+            "血压轻度升高",
+            "血压略高，建议清淡饮食、适当运动，密切关注。"
+        )
+        else -> Triple(
+            AlertLevel.GREEN,
+            "血压正常",
+            "血压在正常范围内，请继续保持健康生活方式。"
+        )
+    }
+}
+
+private fun checkBloodSugarAlert(value: Float): Triple<AlertLevel, String, String> {
+    return when {
+        value > 16.7f -> Triple(
+            AlertLevel.RED,
+            "血糖危险！立即就医！",
+            "血糖 ${value}mmol/L，严重超标！可能导致酮症酸中毒，请立即就医！"
+        )
+        value < 2.8f -> Triple(
+            AlertLevel.RED,
+            "血糖危险！",
+            "血糖 ${value}mmol/L，严重偏低！请立即补充糖分并就医！"
+        )
+        value > 13.9f -> Triple(
+            AlertLevel.ORANGE,
+            "血糖偏高",
+            "血糖 ${value}mmol/L，偏高。请注意控制饮食，增加运动，或咨询医生调整用药。"
+        )
+        value < 3.9f -> Triple(
+            AlertLevel.ORANGE,
+            "血糖偏低",
+            "血糖 ${value}mmol/L，偏低。请适当补充糖分，避免低血糖反应。"
+        )
+        value > 10.0f -> Triple(
+            AlertLevel.YELLOW,
+            "血糖略高",
+            "血糖 ${value}mmol/L，略高。请继续控制饮食，密切关注。"
+        )
+        value < 4.4f -> Triple(
+            AlertLevel.YELLOW,
+            "血糖略低",
+            "血糖 ${value}mmol/L，略低。请注意营养均衡。"
+        )
+        else -> Triple(
+            AlertLevel.GREEN,
+            "血糖正常",
+            "血糖 ${value}mmol/L，在正常范围内，请继续保持。"
+        )
+    }
+}
+
+private fun checkTrendAlert(records: List<HealthRecord>): HealthAlert? {
+    if (records.size < 3) return null
+    val bpRecords = records.filter { it.type == RecordType.BLOOD_PRESSURE }.take(5)
+    if (bpRecords.size >= 3) {
+        val systolicValues = bpRecords.map { it.value }
+        var risingCount = 0
+        for (i in 1 until systolicValues.size) {
+            if (systolicValues[i] > systolicValues[i - 1] + 5) risingCount++
+        }
+        if (risingCount >= 2) {
+            return HealthAlert(
+                level = AlertLevel.YELLOW,
+                title = "血压上升趋势",
+                message = "检测到血压连续上升趋势，建议密切关注，必要时就医。"
+            )
+        }
+    }
+    return null
+}
+
+private fun checkHeartRateAlert(value: Float): Triple<AlertLevel, String, String> {
+    return when {
+        value > 150 || value < 40 -> Triple(
+            AlertLevel.RED,
+            "心率危险！立即就医！",
+            "心率 ${value.toInt()}次/分，严重异常！请立即拨打120！"
+        )
+        value > 120 || value < 50 -> Triple(
+            AlertLevel.ORANGE,
+            "心率异常",
+            "心率 ${value.toInt()}次/分，建议就医检查心脏功能。"
+        )
+        value > 100 || value < 60 -> Triple(
+            AlertLevel.YELLOW,
+            "心率略异常",
+            "心率 ${value.toInt()}次/分，略偏离正常范围，请注意休息，密切关注。"
+        )
+        else -> Triple(
+            AlertLevel.GREEN,
+            "心率正常",
+            "心率 ${value.toInt()}次/分，在正常范围内，请继续保持。"
         )
     }
 }
@@ -215,7 +331,7 @@ private fun HistoryTab(healthRecordManager: HealthRecordManager) {
 @Composable
 private fun TrendTab(healthRecordManager: HealthRecordManager) {
     val weekRecords = remember { healthRecordManager.getWeekRecords() }
-    val trendAlert = remember { RulesEngine.checkTrend(weekRecords) }
+    val trendAlert = remember { checkTrendAlert(weekRecords) }
 
     Column(
         modifier = Modifier
