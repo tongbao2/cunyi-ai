@@ -66,18 +66,16 @@ jobs:
 
       - name: Upload build log
         if: always()
-        working-directory: ./android/CunYiAI
         uses: actions/upload-artifact@v4
         with:
           name: build-log
-          path: build.log
+          path: android/CunYiAI/build.log
           retention-days: 7
 
       - name: Upload APK
-        working-directory: ./android/CunYiAI
         uses: actions/upload-artifact@v4
         with:
           name: cunyi-ai-debug-apk
-          path: build/outputs/apk/debug/
+          path: android/CunYiAI/build/outputs/apk/debug/
           if-no-files-found: warn
           retention-days: 30
