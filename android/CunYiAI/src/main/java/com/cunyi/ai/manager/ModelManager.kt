@@ -20,11 +20,32 @@ import kotlin.coroutines.coroutineContext
  */
 class ModelManager(private val context: Context) {
 
+    // 模型类型枚举
+    enum class ModelType(val url: String, val filename: String, val size: Long, val displayName: String, val description: String) {
+        GEMMA(
+            "https://hf-mirror.com/unsloth/gemma-4-E2B-it-GGUF/resolve/main/gemma-4-E2B-it-Q4_K_M.gguf",
+            "gemma-4-E2B-it-Q4_K_M.gguf",
+            3L * 1024 * 1024 * 1024 + (1024 * 1024 * 1024 / 10),
+            "Gemma 4 E2B",
+            "约3.1GB，适合一般手机"
+        ),
+        BAICHUAN(
+            "https://www.modelscope.cn/models/baichuan-inc/Baichuan-M3-235B-Q4_K_M-GGUF/resolve/master/baichuan-m3-235b-q4_k_m-00010-of-00010.gguf",
+            "baichuan-m3-235b-q4_k_m.gguf",
+            140L * 1024 * 1024 * 1024,
+            "Baichuan M3 235B",
+            "约140GB，适合高配手机(8G+)"
+        ),
+        MEDGEMMA(
+            "https://www.modelscope.cn/models/unsloth/medgemma-1.5-4b-it-GGUF/resolve/master/medgemma-1.5-4b-it-Q4_K_M.gguf",
+            "medgemma-1.5-4b-it-Q4_K_M.gguf",
+            2700L * 1024 * 1024,
+            "MedGemma 1.5 4B",
+            "约2.7GB，医疗领域专用"
+        )
+    }
+
     companion object {
-        // HuggingFace镜像地址 - Gemma 4 E2B Q4_K_M
-        const val MODEL_URL = "https://hf-mirror.com/unsloth/gemma-4-E2B-it-GGUF/resolve/main/gemma-4-E2B-it-Q4_K_M.gguf"
-        const val MODEL_FILENAME = "gemma-4-E2B-it-Q4_K_M.gguf"
-        const val MODEL_SIZE = 3.1 * 1024 * 1024 * 1024L // 约3.1GB
         private const val BUFFER_SIZE = 128 * 1024 // 128KB buffer for smooth progress
         private const val PROGRESS_UPDATE_THRESHOLD = 512 * 1024L // 每512KB更新一次进度
     }
@@ -55,28 +76,57 @@ class ModelManager(private val context: Context) {
      * 获取模型文件路径
      */
     fun getModelPath(): File {
+        return getModelPath(ModelType.GEMMA)
+    }
+    
+    /**
+     * 获取指定类型模型的路径
+     */
+    fun getModelPath(modelType: ModelType): File {
         val externalDir = context.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS)
         return if (externalDir != null) {
-            File(externalDir, "models/$MODEL_FILENAME")
+            File(externalDir, "models/${modelType.filename}")
         } else {
-            File(context.filesDir, "models/$MODEL_FILENAME")
+            File(context.filesDir, "models/${modelType.filename}")
         }
+    }
+    
+    /**
+     * 获取所有可能的模型文件路径
+     */
+    private fun getAllModelPaths(): List<File> {
+        val externalDir = context.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS)
+        val baseDir = if (externalDir != null) File(externalDir, "models") else File(context.filesDir, "models")
+        return ModelType.values().map { File(baseDir, it.filename) }
     }
 
     /**
-     * 检查模型是否已下载
+     * 检查指定模型是否已下载
+     */
+    fun isModelDownloaded(modelType: ModelType): Boolean {
+        val modelFile = getModelPath(modelType)
+        return modelFile.exists() && modelFile.length() > 100 * 1024 * 1024
+    }
+
+    /**
+     * 检查模型是否已下载（任一模型）
      */
     fun isModelDownloaded(): Boolean {
-        val modelFile = getModelPath()
-        return modelFile.exists() && modelFile.length() > 100 * 1024 * 1024
+        return ModelType.values().any { isModelDownloaded(it) }
+    }
+
+    /**
+     * 获取已下载模型的类型
+     */
+    fun getDownloadedModelType(): ModelType? {
+        return ModelType.values().find { isModelDownloaded(it) }
     }
 
     /**
      * 获取已下载模型大小
      */
     fun getDownloadedModelSize(): Long {
-        val modelFile = getModelPath()
-        return if (modelFile.exists()) modelFile.length() else 0L
+        return ModelType.values().filter { isModelDownloaded(it) }.maxOfOrNull { getModelPath(it).length() } ?: 0L
     }
 
     /**
@@ -114,127 +164,140 @@ class ModelManager(private val context: Context) {
     }
 
     /**
-     * 下载模型
+     * 下载模型（支持指定模型类型）
+     * @param modelType 指定要下载的模型类型，null时按默认顺序尝试所有模型
      */
-    suspend fun downloadModel() = withContext(Dispatchers.IO) {
-        try {
-            _downloadState.value = DownloadState.Connecting
-
-            // 检查是否已存在
-            if (isModelDownloaded()) {
-                _downloadState.value = DownloadState.ModelExists
-                return@withContext
-            }
-
-            val modelFile = getModelPath()
-            modelFile.parentFile?.mkdirs()
-
-            // 第一步：获取文件大小
-            val headRequest = Request.Builder()
-                .url(MODEL_URL)
-                .head()
-                .build()
-
-            val headResponse = httpClient.newCall(headRequest).execute()
-            if (!headResponse.isSuccessful) {
-                // 如果 HEAD 失败，尝试 GET 并跟跳转
+    suspend fun downloadModel(modelType: ModelType? = null) = withContext(Dispatchers.IO) {
+        // 确定要下载的URL列表
+        val urls: List<Triple<String, String, Long>>
+        
+        if (modelType != null) {
+            // 指定了具体模型，只下载该模型
+            urls = listOf(Triple(modelType.url, modelType.filename, modelType.size))
+        } else {
+            // 未指定，按默认顺序尝试所有模型
+            urls = ModelType.values().map { Triple(it.url, it.filename, it.size) }
+        }
+        
+        var lastError = ""
+        
+        for ((url, filename, expectedSize) in urls) {
+            try {
                 _downloadState.value = DownloadState.Connecting
-            }
-            val contentLength = headResponse.header("content-length")?.toLongOrNull() ?: 0L
-            headResponse.close()
+                
+                // 检查指定模型是否已存在
+                val targetModelType = modelType ?: ModelType.values().find { it.filename == filename }
+                if (targetModelType != null && isModelDownloaded(targetModelType)) {
+                    _downloadState.value = DownloadState.ModelExists
+                    return@withContext
+                }
 
-            // 第二步：开始下载
-            val downloadRequest = Request.Builder()
-                .url(MODEL_URL)
-                .build()
+                // 使用对应文件名创建文件
+                val baseDir = context.getExternalFilesDir(android.os.Environment.DIRECTORY_DOWNLOADS)
+                    ?: context.filesDir
+                val modelFile = File(File(baseDir, "models"), filename)
+                modelFile.parentFile?.mkdirs()
 
-            val downloadResponse = httpClient.newCall(downloadRequest).execute()
-            if (!downloadResponse.isSuccessful && downloadResponse.code !in 200..299) {
-                val errorMsg = "下载失败: HTTP ${downloadResponse.code}"
-                downloadResponse.close()
-                _downloadState.value = DownloadState.Error(errorMsg)
-                return@withContext
-            }
+                // 获取文件大小
+                val headRequest = Request.Builder().url(url).head().build()
+                val headResponse = httpClient.newCall(headRequest).execute()
+                val contentLength = headResponse.header("content-length")?.toLongOrNull() ?: expectedSize
+                headResponse.close()
 
-            val body = downloadResponse.body
-            if (body == null) {
-                downloadResponse.close()
-                _downloadState.value = DownloadState.Error("服务器无响应")
-                return@withContext
-            }
+                // 开始下载
+                val downloadResponse = httpClient.newCall(Request.Builder().url(url).build()).execute()
+                if (!downloadResponse.isSuccessful && downloadResponse.code !in 200..299) {
+                    downloadResponse.close()
+                    lastError = "HTTP ${downloadResponse.code}"
+                    continue // 尝试下一个URL
+                }
 
-            val totalBytes = if (contentLength > 0) contentLength else body.contentLength().coerceAtLeast(0L)
-            var downloadedBytes = 0L
-            var lastUpdateTime = System.currentTimeMillis()
-            var lastUpdateBytes = 0L
-            var bytesPerSecond = 0L
+                val body = downloadResponse.body
+                if (body == null) {
+                    downloadResponse.close()
+                    lastError = "服务器无响应"
+                    continue
+                }
 
-            body.byteStream().use { input ->
-                FileOutputStream(modelFile).use { output ->
-                    val buffer = ByteArray(BUFFER_SIZE)
-                    var bytesRead: Int
+                val totalBytes = if (contentLength > 0) contentLength else body.contentLength().coerceAtLeast(0L)
+                var downloadedBytes = 0L
+                var lastUpdateTime = System.currentTimeMillis()
+                var lastUpdateBytes = 0L
+                var bytesPerSecond = 0L
 
-                    while (input.read(buffer).also { bytesRead = it } != -1) {
-                        if (!coroutineContext.isActive) {
-                            // 协程被取消，清理文件
-                            modelFile.delete()
-                            return@withContext
-                        }
+                body.byteStream().use { input ->
+                    FileOutputStream(modelFile).use { output ->
+                        val buffer = ByteArray(BUFFER_SIZE)
+                        var bytesRead: Int
 
-                        output.write(buffer, 0, bytesRead)
-                        downloadedBytes += bytesRead
-
-                        // 更新进度（每512KB或每500ms更新一次）
-                        val now = System.currentTimeMillis()
-                        val elapsed = now - lastUpdateTime
-                        if (downloadedBytes - lastUpdateBytes >= PROGRESS_UPDATE_THRESHOLD || elapsed >= 500) {
-                            if (elapsed > 0) {
-                                bytesPerSecond = ((downloadedBytes - lastUpdateBytes) * 1000L) / elapsed
+                        while (input.read(buffer).also { bytesRead = it } != -1) {
+                            if (!coroutineContext.isActive) {
+                                modelFile.delete()
+                                return@withContext
                             }
-                            val progress = if (totalBytes > 0) downloadedBytes.toFloat() / totalBytes else 0f
-                            _downloadState.value = DownloadState.Downloading(
-                                progress = progress.coerceIn(0f, 1f),
-                                downloadedBytes = downloadedBytes,
-                                totalBytes = totalBytes,
-                                speed = calculateSpeed(bytesPerSecond)
-                            )
-                            lastUpdateBytes = downloadedBytes
-                            lastUpdateTime = now
+
+                            output.write(buffer, 0, bytesRead)
+                            downloadedBytes += bytesRead
+
+                            val now = System.currentTimeMillis()
+                            val elapsed = now - lastUpdateTime
+                            if (downloadedBytes - lastUpdateBytes >= PROGRESS_UPDATE_THRESHOLD || elapsed >= 500) {
+                                if (elapsed > 0) {
+                                    bytesPerSecond = ((downloadedBytes - lastUpdateBytes) * 1000L) / elapsed
+                                }
+                                val progress = if (totalBytes > 0) downloadedBytes.toFloat() / totalBytes else 0f
+                                _downloadState.value = DownloadState.Downloading(
+                                    progress = progress.coerceIn(0f, 1f),
+                                    downloadedBytes = downloadedBytes,
+                                    totalBytes = totalBytes,
+                                    speed = calculateSpeed(bytesPerSecond)
+                                )
+                                lastUpdateBytes = downloadedBytes
+                                lastUpdateTime = now
+                            }
                         }
                     }
                 }
-            }
-            downloadResponse.close()
+                downloadResponse.close()
 
-            // 验证下载
-            val fileSize = modelFile.length()
-            if (fileSize > 100 * 1024 * 1024) {
-                _downloadState.value = DownloadState.Success
-            } else {
-                modelFile.delete()
-                _downloadState.value = DownloadState.Error("下载文件不完整（${formatSize(fileSize)}），请重试")
+                // 验证下载
+                val fileSize = modelFile.length()
+                val minSize = 100L * 1024 * 1024 // 最小100MB
+                if (fileSize > minSize) {
+                    _downloadState.value = DownloadState.Success
+                    return@withContext
+                } else {
+                    modelFile.delete()
+                    lastError = "文件不完整 (${formatSize(fileSize)})"
+                }
+                
+            } catch (e: Exception) {
+                lastError = e.message ?: "未知错误"
+                continue // 尝试备用URL
             }
-
-        } catch (e: Exception) {
-            val message = when {
-                e.message?.contains("timeout", ignoreCase = true) == true -> "连接超时，请检查网络后重试"
-                e.message?.contains("network", ignoreCase = true) == true -> "网络不可用，请检查网络连接"
-                e.message?.contains("cancel", ignoreCase = true) == true -> "下载已取消"
-                else -> "下载失败: ${e.message}"
-            }
-            _downloadState.value = DownloadState.Error(message)
         }
+        
+        // 所有URL都失败
+        val message = when {
+            lastError.contains("timeout", ignoreCase = true) -> "连接超时，请检查网络"
+            lastError.contains("network", ignoreCase = true) -> "网络不可用"
+            else -> "下载失败: $lastError"
+        }
+        _downloadState.value = DownloadState.Error(message)
     }
 
     /**
      * 删除已下载的模型
      */
     fun deleteModel(): Boolean {
-        val modelFile = getModelPath()
-        return if (modelFile.exists()) {
-            modelFile.delete()
-        } else {
-            false
+        // 删除所有可能的模型文件
+        var deleted = false
+        ModelType.values().forEach { modelType ->
+            val modelFile = getModelPath(modelType)
+            if (modelFile.exists()) {
+                deleted = modelFile.delete() || deleted
+            }
         }
+        return deleted
     }
 }

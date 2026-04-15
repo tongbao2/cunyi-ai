@@ -6,8 +6,11 @@ import android.os.Bundle
 import android.speech.RecognitionListener
 import android.speech.RecognizerIntent
 import android.speech.SpeechRecognizer
+import android.util.Log
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+
+private const val TAG = "VoiceInputManager"
 
 /**
  * 语音输入管理器
@@ -31,13 +34,16 @@ class VoiceInputManager(private val context: Context) {
     private var onResultCallback: ((String) -> Unit)? = null
 
     fun initialize() {
+        Log.d(TAG, "initialize: checking availability")
         if (!SpeechRecognizer.isRecognitionAvailable(context)) {
+            Log.e(TAG, "initialize: SpeechRecognizer not available")
             _voiceState.value = VoiceState.Error("当前设备不支持语音识别")
             return
         }
         speechRecognizer = SpeechRecognizer.createSpeechRecognizer(context).apply {
             setRecognitionListener(createListener())
         }
+        Log.d(TAG, "initialize: SpeechRecognizer created successfully")
         _voiceState.value = VoiceState.Ready
     }
 
@@ -45,9 +51,18 @@ class VoiceInputManager(private val context: Context) {
      * 开始录音（按住说话）
      */
     fun startListening(onResult: (String) -> Unit) {
+        Log.d(TAG, "startListening: called")
         onResultCallback = onResult
         if (speechRecognizer == null) {
+            Log.d(TAG, "startListening: initializing SpeechRecognizer")
             initialize()
+        }
+
+        // 确保处于正确状态
+        try {
+            speechRecognizer?.cancel()
+        } catch (e: Exception) {
+            Log.w(TAG, "startListening: cancel failed", e)
         }
 
         val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
@@ -58,6 +73,7 @@ class VoiceInputManager(private val context: Context) {
         }
 
         try {
+            Log.d(TAG, "startListening: calling startListening")
             speechRecognizer?.startListening(intent)
             _voiceState.value = VoiceState.Listening
         } catch (e: Exception) {
@@ -92,18 +108,24 @@ class VoiceInputManager(private val context: Context) {
 
     private fun createListener() = object : RecognitionListener {
         override fun onReadyForSpeech(params: Bundle?) {
+            Log.d(TAG, "onReadyForSpeech: ready to receive speech")
             _voiceState.value = VoiceState.Listening
         }
 
-        override fun onBeginningOfSpeech() {}
+        override fun onBeginningOfSpeech() {
+            Log.d(TAG, "onBeginningOfSpeech: speech detected")
+        }
 
         override fun onRmsChanged(rmsdB: Float) {}
 
         override fun onBufferReceived(buffer: ByteArray?) {}
 
-        override fun onEndOfSpeech() {}
+        override fun onEndOfSpeech() {
+            Log.d(TAG, "onEndOfSpeech: speech ended")
+        }
 
         override fun onError(error: Int) {
+            Log.e(TAG, "onError: error code = $error")
             val message = when (error) {
                 SpeechRecognizer.ERROR_AUDIO -> "音频录制错误"
                 SpeechRecognizer.ERROR_CLIENT -> "客户端错误"
@@ -116,12 +138,15 @@ class VoiceInputManager(private val context: Context) {
                 SpeechRecognizer.ERROR_SPEECH_TIMEOUT -> "未检测到语音输入"
                 else -> "识别错误: $error"
             }
+            Log.e(TAG, "onError: $message")
             _voiceState.value = VoiceState.Error(message)
         }
 
         override fun onResults(results: Bundle?) {
+            Log.d(TAG, "onResults: received results")
             val matches = results?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
             val text = matches?.firstOrNull() ?: ""
+            Log.d(TAG, "onResults: recognized text = '$text'")
             if (text.isNotBlank()) {
                 _voiceState.value = VoiceState.Result(text)
                 onResultCallback?.invoke(text)

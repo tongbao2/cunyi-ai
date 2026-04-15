@@ -1,4 +1,4 @@
-﻿package com.cunyi.ai
+package com.cunyi.ai
 
 import android.Manifest
 import android.os.Bundle
@@ -23,9 +23,10 @@ import kotlinx.coroutines.flow.StateFlow
 import com.cunyi.ai.manager.AiEngine
 import com.cunyi.ai.manager.HealthRecordManager
 import com.cunyi.ai.manager.ModelManager
-import com.cunyi.ai.manager.TtsManager
 import com.cunyi.ai.manager.SOSManager
 import com.cunyi.ai.manager.VoiceInputManager
+import com.cunyi.ai.manager.rememberVoiceInputLauncher
+import com.cunyi.ai.manager.createVoiceIntent
 import com.cunyi.ai.ui.components.*
 import com.cunyi.ai.ui.screens.*
 import com.cunyi.ai.ui.theme.*
@@ -35,9 +36,8 @@ class MainActivity : ComponentActivity() {
     private lateinit var healthRecordManager: HealthRecordManager
     private lateinit var sosManager: SOSManager
     private lateinit var modelManager: ModelManager
-    private lateinit var ttsManager: TtsManager
     private lateinit var voiceInputManager: VoiceInputManager
-    
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
@@ -45,17 +45,15 @@ class MainActivity : ComponentActivity() {
         healthRecordManager = HealthRecordManager(this)
         sosManager = SOSManager(this)
         modelManager = ModelManager(this)
-        ttsManager = TtsManager(this)
         voiceInputManager = VoiceInputManager(this)
         voiceInputManager.initialize()
-        
+
         setContent {
             CunYiAITheme {
                 CunYiAIMainScreen(
                     healthRecordManager = healthRecordManager,
                     sosManager = sosManager,
                     modelManager = modelManager,
-                    ttsManager = ttsManager,
                     voiceInputManager = voiceInputManager
                 )
             }
@@ -63,9 +61,8 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onDestroy() {
-        ttsManager.shutdown()
-        voiceInputManager.destroy()
         super.onDestroy()
+        voiceInputManager.destroy()
     }
 }
 
@@ -75,7 +72,6 @@ fun CunYiAIMainScreen(
     healthRecordManager: HealthRecordManager,
     sosManager: SOSManager,
     modelManager: ModelManager,
-    ttsManager: TtsManager,
     voiceInputManager: VoiceInputManager
 ) {
     var currentScreen by remember { mutableStateOf<Screen>(Screen.Home) }
@@ -165,21 +161,13 @@ fun CunYiAIMainScreen(
                     onBack = { currentScreen = Screen.Home },
                     onSOS = { currentScreen = Screen.SOS },
                     messages = chatMessages,
-                    voiceState = voiceInputManager.voiceState,
-                    ttsManager = ttsManager,
                     onSendMessage = { message ->
                         // 添加用户消息
                         chatMessages = chatMessages + ChatMessage(message, isUser = true)
                         // 调用 AI 引擎生成回复
                         val aiResponse = AiEngine.generateResponse(message)
                         chatMessages = chatMessages + ChatMessage(aiResponse, isUser = false)
-                        // 语音播报 AI 回复（受开关控制）
-                        if (ttsEnabled) {
-                            ttsManager.speak(aiResponse)
-                        }
-                    },
-                    onVoiceStart = { cb -> voiceInputManager.startListening(cb) },
-                    onVoiceStop = { voiceInputManager.stopListening() }
+                    }
                 )
                 Screen.Health -> HealthManagementScreen(
                     healthRecordManager = healthRecordManager,
@@ -275,9 +263,9 @@ private fun HomeScreen(
 
         item {
             FunctionCard(
-                title = "紧急求救",
-                description = "一键拨打120急救或紧急联系人",
-                icon = "🆘",
+                title = "拨打电话",
+                description = "一键拨打紧急电话",
+                icon = "📞",
                 onClick = onNavigateToSOS
             )
         }
@@ -332,34 +320,14 @@ private fun ChatScreen(
     onBack: () -> Unit,
     onSOS: () -> Unit,
     messages: List<ChatMessage>,
-    voiceState: StateFlow<VoiceInputManager.VoiceState>,
-    ttsManager: TtsManager,
-    onSendMessage: (String) -> Unit,
-    onVoiceStart: ((String) -> Unit) -> Unit,
-    onVoiceStop: () -> Unit
+    onSendMessage: (String) -> Unit
 ) {
     var inputText by remember { mutableStateOf("") }
-    val currentVoiceState by voiceState.collectAsState()
-    var isRecording by remember { mutableStateOf(false) }
-    var ttsEnabled by remember { mutableStateOf(true) }
-
-    // 监听语音识别结果
-    LaunchedEffect(currentVoiceState) {
-        when (currentVoiceState) {
-            is VoiceInputManager.VoiceState.Result -> {
-                val text = (currentVoiceState as VoiceInputManager.VoiceState.Result).text
-                if (text.isNotBlank()) {
-                    inputText = text
-                }
-                isRecording = false
-            }
-            is VoiceInputManager.VoiceState.Listening -> {
-                isRecording = true
-            }
-            is VoiceInputManager.VoiceState.Error -> {
-                isRecording = false
-            }
-            else -> { /* Idle, Ready */ }
+    
+    // 使用 Intent 方式的语音输入（更稳定）
+    val voiceLauncher = rememberVoiceInputLauncher { recognizedText ->
+        if (recognizedText.isNotBlank()) {
+            inputText = recognizedText
         }
     }
 
@@ -373,14 +341,6 @@ private fun ChatScreen(
                     }
                 },
                 actions = {
-                    // TTS 语音播报开关
-                    IconButton(onClick = { ttsEnabled = !ttsEnabled }) {
-                        Icon(
-                            if (ttsEnabled) Icons.Default.VolumeUp else Icons.Default.VolumeOff,
-                            if (ttsEnabled) "关闭语音播报" else "开启语音播报",
-                            tint = if (ttsEnabled) TextOnPrimary else TextOnPrimary.copy(alpha = 0.5f)
-                        )
-                    }
                     // SOS 按钮
                     IconButton(onClick = onSOS) {
                         Icon(
@@ -461,41 +421,20 @@ private fun ChatScreen(
                         .padding(Dimensions.SpacingM.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    // 语音输入按钮
-                    val permissionLauncher = rememberLauncherForActivityResult(
-                        ActivityResultContracts.RequestPermission()
-                    ) { granted ->
-                        if (granted) {
-                            onVoiceStart { voiceText ->
-                                if (voiceText.isNotBlank()) {
-                                    inputText = voiceText
-                                }
-                                isRecording = false
-                            }
-                            isRecording = true
-                        } else {
-                            isRecording = false
-                        }
-                    }
-
+                    // 语音输入按钮 - 使用 Intent 方式（更稳定）
                     IconButton(
                         onClick = {
-                            if (isRecording) {
-                                onVoiceStop()
-                                isRecording = false
-                            } else {
-                                permissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
-                            }
+                            voiceLauncher.launch(createVoiceIntent())
                         },
                         modifier = Modifier.size(48.dp),
                         colors = IconButtonDefaults.iconButtonColors(
-                            containerColor = if (isRecording) AlertRed.copy(alpha = 0.15f) else PrimaryGreen.copy(alpha = 0.1f)
+                            containerColor = PrimaryGreen.copy(alpha = 0.1f)
                         )
                     ) {
                         Icon(
-                            imageVector = if (isRecording) Icons.Default.Stop else Icons.Default.Mic,
-                            contentDescription = if (isRecording) "停止录音" else "语音输入",
-                            tint = if (isRecording) AlertRed else PrimaryGreen,
+                            imageVector = Icons.Default.Mic,
+                            contentDescription = "语音输入",
+                            tint = PrimaryGreen,
                             modifier = Modifier.size(28.dp)
                         )
                     }
@@ -509,7 +448,7 @@ private fun ChatScreen(
                         modifier = Modifier.weight(1f),
                         placeholder = {
                             Text(
-                                text = if (isRecording) "正在聆听..." else "输入您的问题，或按住🎤说话",
+                                text = "输入您的问题，或点击🎤语音输入",
                                 style = MaterialTheme.typography.bodyMedium
                             )
                         },
@@ -531,38 +470,13 @@ private fun ChatScreen(
                             }
                         },
                         modifier = Modifier.height(56.dp),
-                        enabled = inputText.isNotBlank() && !isRecording,
+                        enabled = inputText.isNotBlank(),
                         colors = ButtonDefaults.buttonColors(
                             containerColor = PrimaryGreen,
                             disabledContainerColor = PrimaryGreen.copy(alpha = 0.3f)
                         )
                     ) {
                         Text("发送", style = MaterialTheme.typography.titleMedium)
-                    }
-                }
-
-                // 录音状态提示
-                if (isRecording) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = Dimensions.SpacingM.dp)
-                            .padding(bottom = Dimensions.SpacingS.dp),
-                        horizontalArrangement = Arrangement.Center,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(
-                            Icons.Default.Mic,
-                            contentDescription = null,
-                            tint = AlertRed,
-                            modifier = Modifier.size(16.dp)
-                        )
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text(
-                            text = "正在聆听... 松开发送",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = AlertRed
-                        )
                     }
                 }
             }

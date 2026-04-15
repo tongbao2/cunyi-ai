@@ -2,20 +2,29 @@ package com.cunyi.ai.ui.screens
 
 import android.Manifest
 import android.content.pm.PackageManager
-import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import android.graphics.drawable.BitmapDrawable
 import android.net.Uri
+import android.util.Log
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
@@ -27,6 +36,22 @@ import com.cunyi.ai.data.RiskLevel
 import com.cunyi.ai.ui.components.*
 import com.cunyi.ai.ui.theme.*
 import java.io.File
+import android.graphics.Bitmap
+
+private const val TAG = "MedicineRecognition"
+
+// 从 URI 加载图片 Bitmap（非 Composable）
+private fun loadBitmapFromUri(context: android.content.Context, uri: Uri?): Bitmap? {
+    if (uri == null) return null
+    return try {
+        context.contentResolver.openInputStream(uri)?.use { inputStream ->
+            BitmapFactory.decodeStream(inputStream)
+        }
+    } catch (e: Exception) {
+        Log.e(TAG, "Failed to load bitmap from uri: $uri", e)
+        null
+    }
+}
 
 /**
  * 拍照识药页面
@@ -37,33 +62,58 @@ fun MedicineRecognitionScreen(
     onBack: () -> Unit
 ) {
     val context = LocalContext.current
-    var showCamera by remember { mutableStateOf(false) }
     var capturedImageUri by remember { mutableStateOf<Uri?>(null) }
+    var lastCapturedUri by remember { mutableStateOf<Uri?>(null) } // 用于保存最近拍照的Uri
     var searchQuery by remember { mutableStateOf("") }
     var searchResults by remember { mutableStateOf<List<Medicine>>(emptyList()) }
     var selectedMedicines by remember { mutableStateOf<List<Medicine>>(emptyList()) }
     var interactions by remember { mutableStateOf<List<DrugInteraction>>(emptyList()) }
     var identifiedMedicine by remember { mutableStateOf<Medicine?>(null) }
+    var showImagePreview by remember { mutableStateOf(false) }
+
+    // 拍照Launcher - 使用局部Uri避免状态问题
+    val takePictureLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.TakePicture()
+    ) { success ->
+        Log.d(TAG, "TakePicture result: success=$success")
+        if (success && capturedImageUri != null) {
+            showImagePreview = true
+            Toast.makeText(context, "拍照成功！请搜索药品名称", Toast.LENGTH_SHORT).show()
+        } else {
+            Toast.makeText(context, "拍照失败，请重试", Toast.LENGTH_SHORT).show()
+        }
+    }
 
     // 相机权限Launcher
     val cameraPermissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { isGranted ->
+        Log.d(TAG, "Camera permission result: $isGranted")
         if (isGranted) {
-            showCamera = true
+            // 权限授予后直接拍照
+            try {
+                val photoFile = File.createTempFile(
+                    "medicine_${System.currentTimeMillis()}",
+                    ".jpg",
+                    context.cacheDir
+                )
+                Log.d(TAG, "Created temp file: ${photoFile.absolutePath}")
+                
+                val uri = FileProvider.getUriForFile(
+                    context,
+                    "${context.packageName}.fileprovider",
+                    photoFile
+                )
+                Log.d(TAG, "FileProvider Uri: $uri")
+                
+                capturedImageUri = uri
+                takePictureLauncher.launch(uri)
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to create temp file", e)
+                Toast.makeText(context, "创建临时文件失败: ${e.message}", Toast.LENGTH_LONG).show()
+            }
         } else {
             Toast.makeText(context, "需要相机权限才能拍照识别药品", Toast.LENGTH_LONG).show()
-        }
-    }
-
-    // 拍照Launcher
-    val takePictureLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.TakePicture()
-    ) { success ->
-        if (success && capturedImageUri != null) {
-            // 在实际应用中，这里应该调用OCR或AI模型识别药盒上的文字
-            // 目前简化处理，提示用户手动搜索
-            Toast.makeText(context, "请在下方搜索药品名称", Toast.LENGTH_LONG).show()
         }
     }
 
@@ -71,33 +121,50 @@ fun MedicineRecognitionScreen(
     val pickImageLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.GetContent()
     ) { uri ->
+        Log.d(TAG, "PickImage result: uri=$uri")
         uri?.let {
             capturedImageUri = it
-            Toast.makeText(context, "已选择图片，请在下方搜索药品名称", Toast.LENGTH_LONG).show()
+            showImagePreview = true
+            Toast.makeText(context, "已选择图片，请搜索药品名称", Toast.LENGTH_SHORT).show()
         }
     }
 
+    // 拍照函数
     fun takePicture() {
-        when {
-            ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) 
-                == PackageManager.PERMISSION_GRANTED -> {
-                // 创建临时文件
+        Log.d(TAG, "takePicture called")
+        if (ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) 
+            == PackageManager.PERMISSION_GRANTED) {
+            try {
                 val photoFile = File.createTempFile(
-                    "medicine_",
+                    "medicine_${System.currentTimeMillis()}",
                     ".jpg",
                     context.cacheDir
                 )
-                capturedImageUri = FileProvider.getUriForFile(
+                Log.d(TAG, "Created temp file: ${photoFile.absolutePath}")
+                
+                val uri = FileProvider.getUriForFile(
                     context,
                     "${context.packageName}.fileprovider",
                     photoFile
                 )
-                takePictureLauncher.launch(capturedImageUri)
+                Log.d(TAG, "FileProvider Uri: $uri")
+                
+                capturedImageUri = uri
+                takePictureLauncher.launch(uri)
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to create temp file", e)
+                Toast.makeText(context, "创建临时文件失败: ${e.message}", Toast.LENGTH_LONG).show()
             }
-            else -> {
-                cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
-            }
+        } else {
+            Log.d(TAG, "Requesting camera permission")
+            cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
         }
+    }
+
+    // 从相册选择
+    fun pickImage() {
+        Log.d(TAG, "pickImage called")
+        pickImageLauncher.launch("image/*")
     }
 
     // 搜索药品
@@ -153,13 +220,105 @@ fun MedicineRecognitionScreen(
                 .padding(Dimensions.SpacingL.dp),
             verticalArrangement = Arrangement.spacedBy(Dimensions.SpacingL.dp)
         ) {
-            // 拍照按钮
+            // 拍照/选图按钮
             item {
-                LargeButton(
-                    text = "📷 拍照药盒",
-                    onClick = { takePicture() },
-                    icon = Icons.Default.CameraAlt
-                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(Dimensions.SpacingM.dp)
+                ) {
+                    // 拍照按钮
+                    LargeButton(
+                        text = "📷 拍照药盒",
+                        onClick = { takePicture() },
+                        icon = Icons.Default.CameraAlt,
+                        modifier = Modifier.weight(1f)
+                    )
+                    
+                    // 从相册选择
+                    LargeButton(
+                        text = "🖼️ 从相册",
+                        onClick = { pickImage() },
+                        icon = Icons.Default.PhotoLibrary,
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+            }
+
+            // 图片预览
+            if (capturedImageUri != null) {
+                item {
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(containerColor = BackgroundWhite)
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(Dimensions.SpacingM.dp)
+                        ) {
+                            Text(
+                                text = "📷 已拍摄/选择的图片",
+                                style = MaterialTheme.typography.titleMedium
+                            )
+                            Spacer(modifier = Modifier.height(Dimensions.SpacingS.dp))
+                            
+                            // 加载并显示图片
+                            val bitmap = loadBitmapFromUri(context, capturedImageUri)
+                            if (bitmap != null) {
+                                Image(
+                                    bitmap = bitmap.asImageBitmap(),
+                                    contentDescription = "药盒图片",
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(200.dp)
+                                        .clip(RoundedCornerShape(8.dp)),
+                                    contentScale = ContentScale.Crop
+                                )
+                            } else {
+                                // 图片加载失败时显示占位符
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(200.dp)
+                                        .clip(RoundedCornerShape(8.dp))
+                                        .background(Color.LightGray),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                        Icon(
+                                            Icons.Default.BrokenImage,
+                                            contentDescription = null,
+                                            tint = TextSecondary,
+                                            modifier = Modifier.size(48.dp)
+                                        )
+                                        Spacer(modifier = Modifier.height(8.dp))
+                                        Text(
+                                            "无法加载图片",
+                                            color = TextSecondary
+                                        )
+                                    }
+                                }
+                            }
+                            
+                            Spacer(modifier = Modifier.height(Dimensions.SpacingS.dp))
+                            
+                            Text(
+                                text = "请在下方搜索药品名称进行识别",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = TextSecondary
+                            )
+                            
+                            // 清除图片按钮
+                            IconButton(
+                                onClick = { 
+                                    capturedImageUri = null
+                                    showImagePreview = false
+                                },
+                                modifier = Modifier.align(Alignment.End)
+                            ) {
+                                Icon(Icons.Default.Close, "清除图片", tint = AlertRed)
+                            }
+                        }
+                    }
+                }
             }
 
             // 搜索框

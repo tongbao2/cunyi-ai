@@ -81,7 +81,7 @@ fun SOSButton(
         )
     ) {
         Text(
-            text = "🆘 一键求救",
+            text = "📞 拨打电话",
             style = MaterialTheme.typography.headlineMedium,
             textAlign = TextAlign.Center
         )
