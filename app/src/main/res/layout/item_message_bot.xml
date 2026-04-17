@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:paddingVertical="4dp">
+
+    <LinearLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="start"
+        android:orientation="horizontal"
+        android:gravity="top">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="🩺"
+            android:textSize="20sp"
+            android:paddingTop="2dp"
+            android:paddingEnd="4dp" />
+
+        <TextView
+            android:id="@+id/tv_bot_msg"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:background="@drawable/bg_msg_bot"
+            android:padding="12dp"
+            android:textColor="#212121"
+            android:textSize="15sp"
+            android:textIsSelectable="true"
+            android:maxWidth="280dp"
+            android:lineSpacingMultiplier="1.3" />
+
+    </LinearLayout>
+
+</FrameLayout>

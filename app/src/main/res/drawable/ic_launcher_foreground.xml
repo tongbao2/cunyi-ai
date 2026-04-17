@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- White medical cross -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M49,29h10v50h-10z"/>
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M29,49h50v10h-50z"/>
+    <!-- Plus sign -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M50,42h6v6h-6z M46,50h6v6h-6z M50,54h6v6h-6z M54,50h6v6h-6z"/>
+</vector>
