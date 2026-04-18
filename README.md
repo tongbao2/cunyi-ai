@@ -66,11 +66,11 @@ git clone --recurse-submodules https://github.com/tongbao2/cunyi-doctor-android.
 
 修改 `LlamaEngine.kt` 中的 `MODEL_URL` 和 `MODEL_FILE` 即可切换模型。
 
-## ⚠️ 注意事项
+## 🔴 注意事项
 
 - 纯 CPU 推理，大模型加载和生成速度较慢属正常现象
 - 首次加载模型需 30秒-2分钟，请耐心等待
-- 本应用仅供健康咨询参考，不构成医疗诊断建议
+
 
 ## ⚠️ 免责声明
 
