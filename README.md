@@ -72,6 +72,10 @@ git clone --recurse-submodules https://github.com/tongbao2/cunyi-doctor-android.
 - 首次加载模型需 30秒-2分钟，请耐心等待
 - 本应用仅供健康咨询参考，不构成医疗诊断建议
 
+## ⚠️ 免责声明
+
+AI 建议仅供参考，不能替代医生诊断。如有不适，请及时就医。
+
 ## 📄 License
 
 MIT
