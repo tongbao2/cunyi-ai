@@ -2,8 +2,10 @@ package com.cunyi.doctor.ui
 
 import android.Manifest
 import android.content.pm.PackageManager
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.os.Environment
 import android.speech.tts.TextToSpeech
 import android.view.Menu
 import android.view.MenuItem
@@ -15,6 +17,7 @@ import androidx.activity.viewModels
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
+import androidx.core.content.FileProvider
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
@@ -24,6 +27,9 @@ import com.cunyi.doctor.R
 import com.cunyi.doctor.llm.LlamaEngine
 import com.cunyi.doctor.llm.ModelConfig
 import kotlinx.coroutines.launch
+import java.io.File
+import java.text.SimpleDateFormat
+import java.util.Date
 import java.util.Locale
 
 class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
@@ -38,10 +44,43 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
     private var ttsEnabled = true  // 默认开启
     private var pendingText: String? = null  // TTS 还没就绪时暂存的文字
 
+    // 拍照相关
+    private var currentPhotoPath: String? = null
+    private var pendingImagePath: String? = null  // 待发送的图片路径
+
     private val notifLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { granted ->
         if (!granted) Toast.makeText(this, "缺少通知权限", Toast.LENGTH_SHORT).show()
+    }
+
+    // 拍照权限
+    private val cameraPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        if (granted) {
+            launchCamera()
+        } else {
+            Toast.makeText(this, "需要相机权限才能拍照", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    // 图片选择器
+    private val imagePickerLauncher = registerForActivityResult(
+        ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        uri?.let { handleSelectedImage(it) }
+    }
+
+    // 拍照
+    private val cameraLauncher = registerForActivityResult(
+        ActivityResultContracts.TakePicture()
+    ) { success ->
+        if (success) {
+            currentPhotoPath?.let { path ->
+                handleCapturedImage(path)
+            }
+        }
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -164,13 +203,129 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                 submitMessage(); true
             } else false
         }
+
+        // 图片选择按钮
+        vb.btnPickImage.setOnClickListener {
+            if (checkImagePermission()) {
+                imagePickerLauncher.launch("image/*")
+            }
+        }
+
+        // 拍照按钮
+        vb.btnCamera.setOnClickListener {
+            if (checkCameraPermission()) {
+                launchCamera()
+            }
+        }
+    }
+
+    // 检查图片读取权限
+    private fun checkImagePermission(): Boolean {
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_MEDIA_IMAGES)
+                != PackageManager.PERMISSION_GRANTED
+            ) {
+                imagePermissionLauncher.launch(Manifest.permission.READ_MEDIA_IMAGES)
+                false
+            } else true
+        } else {
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE)
+                != PackageManager.PERMISSION_GRANTED
+            ) {
+                imagePermissionLauncher.launch(Manifest.permission.READ_EXTERNAL_STORAGE)
+                false
+            } else true
+        }
+    }
+
+    // 图片权限 launcher
+    private val imagePermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        if (granted) {
+            imagePickerLauncher.launch("image/*")
+        } else {
+            Toast.makeText(this, "需要存储权限才能选择图片", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    // 检查相机权限
+    private fun checkCameraPermission(): Boolean {
+        return if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA)
+            != PackageManager.PERMISSION_GRANTED
+        ) {
+            cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
+            false
+        } else true
+    }
+
+    // 启动相机
+    private fun launchCamera() {
+        val photoFile = createImageFile()
+        photoFile?.let { file ->
+            currentPhotoPath = file.absolutePath
+            val photoUri = FileProvider.getUriForFile(
+                this,
+                "${packageName}.fileprovider",
+                file
+            )
+            cameraLauncher.launch(photoUri)
+        }
+    }
+
+    // 创建图片文件
+    private fun createImageFile(): File? {
+        return try {
+            val timeStamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
+            val storageDir = getExternalFilesDir(Environment.DIRECTORY_PICTURES)
+            File.createTempFile("JPEG_${timeStamp}_", ".jpg", storageDir)
+        } catch (e: Exception) {
+            e.printStackTrace()
+            null
+        }
+    }
+
+    // 处理选择的图片
+    private fun handleSelectedImage(uri: Uri) {
+        try {
+            val inputStream = contentResolver.openInputStream(uri)
+            val timeStamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
+            val storageDir = getExternalFilesDir(Environment.DIRECTORY_PICTURES)
+            val file = File(storageDir, "IMG_${timeStamp}.jpg")
+            
+            inputStream?.use { input ->
+                file.outputStream().use { output ->
+                    input.copyTo(output)
+                }
+            }
+            
+            pendingImagePath = file.absolutePath
+            Toast.makeText(this, "已选择图片: ${file.name}", Toast.LENGTH_SHORT).show()
+        } catch (e: Exception) {
+            Toast.makeText(this, "图片选择失败: ${e.message}", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    // 处理拍摄的照片
+    private fun handleCapturedImage(path: String) {
+        pendingImagePath = path
+        Toast.makeText(this, "已拍摄照片", Toast.LENGTH_SHORT).show()
     }
 
     private fun submitMessage() {
-        val text = vb.etInput.text?.toString()?.trim() ?: return
-        if (text.isEmpty()) return
+        val text = vb.etInput.text?.toString()?.trim() ?: ""
+        val imagePath = pendingImagePath
+        
+        // 至少要有文字或图片
+        if (text.isEmpty() && imagePath == null) return
+        
         vb.etInput.text?.clear()
-        vm.sendMessage(text)
+        
+        // 发送消息（带可选图片）
+        vm.sendMessage(text, imagePath)
+        
+        // 清空待发送的图片
+        pendingImagePath = null
     }
 
     private fun observeState() {
@@ -225,6 +380,13 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                         vb.btnSend.visibility = if (loading) View.GONE else View.VISIBLE
                         vb.btnStop.visibility = if (loading) View.VISIBLE else View.GONE
                         vb.progressTyping.visibility = if (loading) View.VISIBLE else View.GONE
+                    }
+                }
+                
+                // OCR 状态观察
+                launch {
+                    vm.isRecognizing.collect { recognizing ->
+                        vb.progressOcr.visibility = if (recognizing) View.VISIBLE else View.GONE
                     }
                 }
 

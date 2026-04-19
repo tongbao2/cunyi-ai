@@ -1,15 +1,19 @@
 package com.cunyi.doctor.ui
 
+import android.graphics.BitmapFactory
 import android.view.Gravity
 import android.view.LayoutInflater
+import android.view.View
 import android.view.ViewGroup
 import android.widget.FrameLayout
+import android.widget.ImageView
 import android.widget.TextView
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import com.cunyi.doctor.databinding.ItemMessageBotBinding
 import com.cunyi.doctor.databinding.ItemMessageUserBinding
+import java.io.File
 
 class ChatAdapter : ListAdapter<MainViewModel.ChatMessage, RecyclerView.ViewHolder>(Diff()) {
 
@@ -67,6 +71,15 @@ class ChatAdapter : ListAdapter<MainViewModel.ChatMessage, RecyclerView.ViewHold
     class UserViewHolder(private val b: ItemMessageUserBinding) : RecyclerView.ViewHolder(b.root) {
         fun bind(msg: MainViewModel.ChatMessage) {
             b.tvUserMsg.text = msg.content
+            
+            // 显示图片（如果有）
+            if (msg.imagePath != null && File(msg.imagePath).exists()) {
+                b.ivUserImage.visibility = View.VISIBLE
+                val bitmap = BitmapFactory.decodeFile(msg.imagePath)
+                b.ivUserImage.setImageBitmap(bitmap)
+            } else {
+                b.ivUserImage.visibility = View.GONE
+            }
         }
     }
 
